@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+
+{% block title %}Configurações - Dashboard{% endblock %}
+{% block page_title %}Configurações do Sistema{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-person-lock me-2"></i>
+                    Usuários de Login
+                </h5>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAdicionarUsuario">
+                    <i class="bi bi-plus-circle me-1"></i>
+                    Adicionar Usuário
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Usuário</th>
+                                <th>Data de Criação</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for usuario in usuarios %}
+                            <tr>
+                                <td>{{ usuario.id }}</td>
+                                <td>
+                                    <i class="bi bi-person-circle me-2"></i>
+                                    {{ usuario.usuario }}
+                                </td>
+                                <td>
+                                    <i class="bi bi-calendar me-1"></i>
+                                    {{ usuario.data_criacao.strftime('%d/%m/%Y %H:%M') if usuario.data_criacao else 'N/A' }}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" onclick="editarUsuario({{ usuario.id }}, '{{ usuario.usuario }}')">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="deletarUsuario({{ usuario.id }}, '{{ usuario.usuario }}')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">
+                                    <i class="bi bi-inbox me-2"></i>
+                                    Nenhum usuário encontrado
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalAdicionarUsuario" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-plus me-2"></i>
+                    Adicionar Usuário de Login
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formAdicionarUsuario">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="novoUsuario" class="form-label">
+                            <i class="bi bi-person me-1"></i>
+                            Nome de Usuário
+                        </label>
+                        <input type="text" class="form-control" id="novoUsuario" name="usuario" required>
+                        <div class="form-text">Digite o nome de usuário para login</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="novaSenha" class="form-label">
+                            <i class="bi bi-lock me-1"></i>
+                            Senha
+                        </label>
+                        <input type="password" class="form-control" id="novaSenha" name="senha" required>
+                        <div class="form-text">Digite uma senha segura</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmarSenha" class="form-label">
+                            <i class="bi bi-lock-fill me-1"></i>
+                            Confirmar Senha
+                        </label>
+                        <input type="password" class="form-control" id="confirmarSenha" name="confirmar_senha" required>
+                        <div class="form-text">Digite a senha novamente para confirmar</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-1"></i>
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i>
+                        Adicionar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEditarUsuario" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil-square me-2"></i>
+                    Editar Usuário de Login
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formEditarUsuario">
+                <input type="hidden" id="editarUsuarioId" name="id">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="editarUsuario" class="form-label">
+                            <i class="bi bi-person me-1"></i>
+                            Nome de Usuário
+                        </label>
+                        <input type="text" class="form-control" id="editarUsuario" name="usuario" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editarSenha" class="form-label">
+                            <i class="bi bi-lock me-1"></i>
+                            Nova Senha
+                        </label>
+                        <input type="password" class="form-control" id="editarSenha" name="senha">
+                        <div class="form-text">Deixe em branco para manter a senha atual</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editarConfirmarSenha" class="form-label">
+                            <i class="bi bi-lock-fill me-1"></i>
+                            Confirmar Nova Senha
+                        </label>
+                        <input type="password" class="form-control" id="editarConfirmarSenha" name="confirmar_senha">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-1"></i>
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i>
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="col-12">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="bi bi-diagram-3 me-2"></i>
+                Configurações do Active Directory
+            </h5>
+        </div>
+        <div class="card-body">
+            <form id="formConfigAD">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="adDominio" class="form-label">
+                                <i class="bi bi-globe me-1"></i>
+                                Domínio
+                            </label>
+                            <input type="text" class="form-control" id="adDominio" name="ad_dominio" 
+                                   value="{{ config.ad_dominio if config else '' }}" required>
+                            <div class="form-text">Domínio do Active Directory</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="adUsuario" class="form-label">
+                                <i class="bi bi-person-badge me-1"></i>
+                                Usuário do AD
+                            </label>
+                            <input type="text" class="form-control" id="adUsuario" name="ad_usuario" 
+                                   value="{{ config.ad_usuario if config else '' }}" required>
+                            <div class="form-text">Usuário com permissão para consultar o Active Directory</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="adSenha" class="form-label">
+                                <i class="bi bi-key me-1"></i>
+                                Senha do AD
+                            </label>
+                            <input type="password" class="form-control" id="adSenha" name="ad_senha">
+                            <div class="form-text">Deixe em branco para manter a senha atual</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i>
+                        Salvar Configurações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('formAdicionarUsuario').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    
+    if (data.senha !== data.confirmar_senha) {
+        mostrarErro('As senhas não coincidem!');
+        return;
+    }
+    
+    if (data.senha.length < 4) {
+        mostrarErro('A senha deve ter pelo menos 4 caracteres!');
+        return;
+    }
+    
+    delete data.confirmar_senha;
+    
+    fetch('/api/usuarios-login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarSucesso('Usuário adicionado com sucesso!');
+            bootstrap.Modal.getInstance(document.getElementById('modalAdicionarUsuario')).hide();
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            mostrarErro(data.error || 'Erro ao adicionar usuário');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarErro('Erro ao adicionar usuário');
+    });
+});
+
+function editarUsuario(id, usuario) {
+    document.getElementById('editarUsuarioId').value = id;
+    document.getElementById('editarUsuario').value = usuario;
+    document.getElementById('editarSenha').value = '';
+    document.getElementById('editarConfirmarSenha').value = '';
+    
+    new bootstrap.Modal(document.getElementById('modalEditarUsuario')).show();
+}
+
+document.getElementById('formEditarUsuario').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    const id = data.id;
+    
+    if (data.senha && data.senha !== data.confirmar_senha) {
+        mostrarErro('As senhas não coincidem!');
+        return;
+    }
+    
+    if (data.senha && data.senha.length < 4) {
+        mostrarErro('A senha deve ter pelo menos 4 caracteres!');
+        return;
+    }
+    
+    delete data.id;
+    delete data.confirmar_senha;
+    
+    if (!data.senha) {
+        delete data.senha;
+    }
+    
+    fetch(`/api/usuarios-login/${id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarSucesso('Usuário editado com sucesso!');
+            bootstrap.Modal.getInstance(document.getElementById('modalEditarUsuario')).hide();
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            mostrarErro(data.error || 'Erro ao editar usuário');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarErro('Erro ao editar usuário');
+    });
+});
+
+function deletarUsuario(id, usuario) {
+    if (!confirmarExclusao(usuario)) {
+        return;
+    }
+    
+    fetch(`/api/usuarios-login/${id}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarSucesso('Usuário deletado com sucesso!');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            mostrarErro(data.error || 'Erro ao deletar usuário');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarErro('Erro ao deletar usuário');
+    });
+}
+
+document.getElementById('formConfigAD').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+    
+    if (!data.ad_senha) {
+        delete data.ad_senha;
+    }
+    
+    fetch('/api/config/ad', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarSucesso('Configurações do AD salvas com sucesso!');
+            document.getElementById('adSenha').value = '';
+        } else {
+            mostrarErro(data.error || 'Erro ao salvar configurações do AD');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarErro('Erro ao salvar configurações do AD');
+    });
+});
+</script>
+{% endblock %} 

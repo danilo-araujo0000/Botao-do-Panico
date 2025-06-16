@@ -1,0 +1,937 @@
+{% extends "base.html" %}
+
+{% block page_title %}Gerenciar Salas{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0">Salas Cadastradas</h4>
+        <p class="text-muted">Gerencie as salas do sistema de botão de pânico</p>
+    </div>
+    <div>
+
+        <button type="button" class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#modalImportarHostnames">
+            <i class="bi bi-cloud-download me-2"></i>Atualizar Hostnames
+        </button>
+        <button type="button" class="btn btn-primary" onclick="adicionarNovaSala()">
+            <i class="bi bi-plus-circle me-2"></i>Nova Sala
+        </button>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="pesquisaSalas" 
+                           placeholder="Pesquisar por nome, hostname ou setor..." 
+                           onkeyup="pesquisarSalas()">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="ordenarSalas" onchange="ordenarTabela()">
+                    <option value="nome_sala">Ordenar por Nome</option>
+                    <option value="hostname">Ordenar por Hostname</option>
+                    <option value="setor">Ordenar por Setor</option>
+                    <option value="id">Ordenar por ID</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn btn-outline-secondary" onclick="ordenarAsc = true; ordenarTabela()">
+                        <i class="bi bi-sort-alpha-down"></i> A-Z
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="ordenarAsc = false; ordenarTabela()">
+                        <i class="bi bi-sort-alpha-up"></i> Z-A
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover" id="tabelaSalas">
+                <thead class="table-light">
+                    <tr>
+                        <th width="80">ID</th>
+                        <th width="200">Nome da Sala</th>
+                        <th width="200">Hostname</th>
+                        <th width="120">Setor</th>
+                        <th width="120">Status</th>
+                        <th width="180">Arquivo</th>
+                        <th width="160">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sala in salas %}
+                    <tr data-id="{{ sala.id }}">
+                        <td><span class="badge bg-secondary">{{ sala.id }}</span></td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm" 
+                                   value="{{ sala.nome_sala }}" 
+                                   oninput="marcarAlterado({{ sala.id }})"
+                                   data-field="nome_sala">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm" 
+                                   value="{{ sala.hostname }}" 
+                                   oninput="marcarAlterado({{ sala.id }})"
+                                   data-field="hostname">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm" 
+                                   value="{{ sala.setor or '' }}" 
+                                   oninput="marcarAlterado({{ sala.id }})"
+                                   data-field="setor"
+                                   style="width: 100px;">
+                        </td>
+                        <td>
+                            <span class="badge {% if sala.status_instalacao == 'Instalado' %}bg-success{% elif sala.status_instalacao == 'Erro' %}bg-danger{% elif sala.status_instalacao == 'Copiando' %}bg-warning{% else %}bg-secondary{% endif %}" 
+                                  id="status-{{ sala.id }}">
+                                {{ sala.status_instalacao }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-primary" 
+                                        onclick="copiarArquivo('{{ sala.hostname }}', {{ sala.id }})"
+                                        title="Copiar arquivo para {{ sala.hostname }}">
+                                    <i class="bi bi-download"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-info" 
+                                        onclick="verificarArquivo('{{ sala.hostname }}', {{ sala.id }})"
+                                        title="Verificar arquivo em {{ sala.hostname }}">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-warning" 
+                                        onclick="testarCredenciais('{{ sala.hostname }}')"
+                                        title="Testar credenciais SMB para {{ sala.hostname }}">
+                                    <i class="bi bi-shield-check"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-success" 
+                                        id="salvar-{{ sala.id }}" 
+                                        onclick="salvarSala({{ sala.id }}, this.closest('tr'))"
+                                        style="display: none;">
+                                    <i class="bi bi-check"></i>
+                                </button>
+
+                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                        onclick="excluirSala({{ sala.id }}, '{{ sala.nome_sala }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if not salas %}
+        <div class="text-center py-5" id="mensagemVazia">
+            <i class="bi bi-building text-muted" style="font-size: 3rem;"></i>
+            <h5 class="mt-3 text-muted">Nenhuma sala cadastrada</h5>
+            <p class="text-muted">Clique em "Nova Sala" para adicionar a primeira sala.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+
+
+<div class="mt-4">
+    <div class="card border-info">
+        <div class="card-body">
+            <div class="d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <h6 class="card-title mb-1">
+                        <i class="bi bi-people me-2"></i>Gerenciar Usuários
+                    </h6>
+                    <p class="card-text text-muted mb-0">
+                        Configure os usuários que podem acionar o botão de pânico
+                    </p>
+                </div>
+                <a href="{{ url_for('main.usuarios') }}" class="btn btn-info">
+                    <i class="bi bi-arrow-right"></i> Ir para Usuários
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalImportarHostnames" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-cloud-download me-2"></i>
+                    Importar Hostnames do Active Directory
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" class="form-control" id="pesquisaHostnames" placeholder="Pesquisar hostnames...">
+                    </div>
+                </div>
+                
+                <div id="loadingHostnames" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2">Consultando Active Directory...</p>
+                </div>
+                
+                <div id="errorHostnames" class="alert alert-danger d-none">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <span id="errorMessage">Erro ao consultar o Active Directory.</span>
+                </div>
+                
+                <div id="containerHostnames" class="d-none">
+                    <div class="d-flex justify-content-between mb-3">
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary" id="btnSelecionarTodos">
+                                <i class="bi bi-check-all me-1"></i>
+                                Selecionar Todos
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary ms-2" id="btnDesmarcarTodos">
+                                <i class="bi bi-x-lg me-1"></i>
+                                Desmarcar Todos
+                            </button>
+                        </div>
+                        <span class="badge bg-primary" id="contadorSelecionados">0 selecionados</span>
+                    </div>
+                    
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="checkTodos">
+                                        </div>
+                                    </th>
+                                    <th>Hostname</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaHostnames">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" id="btnImportarSelecionados" disabled>
+                    <i class="bi bi-cloud-download me-1"></i>
+                    Importar Selecionados
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let contadorNovasSalas = 0;
+let ordenarAsc = true;
+
+function marcarAlterado(id) {
+    const botaoSalvar = document.getElementById(`salvar-${id}`);
+    if (botaoSalvar) {
+        botaoSalvar.style.display = 'inline-block';
+        botaoSalvar.classList.add('btn-warning');
+        botaoSalvar.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
+    }
+}
+
+function pesquisarSalas() {
+    const input = document.getElementById('pesquisaSalas');
+    const filter = input.value.toLowerCase();
+    const tbody = document.querySelector('#tabelaSalas tbody');
+    const rows = tbody.getElementsByTagName('tr');
+
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        let found = false;
+
+        for (let j = 1; j <= 3; j++) {
+            if (cells[j]) {
+                const input = cells[j].querySelector('input');
+                const text = input ? input.value.toLowerCase() : cells[j].textContent.toLowerCase();
+                if (text.includes(filter)) {
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        row.style.display = found ? '' : 'none';
+    }
+}
+
+
+function ordenarTabela() {
+    const select = document.getElementById('ordenarSalas');
+    const campo = select.value;
+    const tbody = document.querySelector('#tabelaSalas tbody');
+    const rows = Array.from(tbody.getElementsByTagName('tr'));
+
+    rows.sort((a, b) => {
+        let aVal, bVal;
+        
+        if (campo === 'id') {
+            aVal = parseInt(a.getAttribute('data-id'));
+            bVal = parseInt(b.getAttribute('data-id'));
+        } else {
+            const aInput = a.querySelector(`input[data-field="${campo}"]`);
+            const bInput = b.querySelector(`input[data-field="${campo}"]`);
+            aVal = aInput ? aInput.value.toLowerCase() : '';
+            bVal = bInput ? bInput.value.toLowerCase() : '';
+        }
+
+        if (ordenarAsc) {
+            return aVal > bVal ? 1 : -1;
+        } else {
+            return aVal < bVal ? 1 : -1;
+        }
+    });
+
+
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+
+function adicionarNovaSala() {
+    contadorNovasSalas++;
+    const tbody = document.querySelector('#tabelaSalas tbody');
+    const novaLinha = document.createElement('tr');
+    novaLinha.setAttribute('data-id', 'nova-' + contadorNovasSalas);
+    novaLinha.classList.add('table-warning'); 
+    
+    novaLinha.innerHTML = `
+        <td><span class="badge bg-info">NOVO</span></td>
+        <td>
+            <input type="text" class="form-control form-control-sm" 
+                   placeholder="Nome da sala" 
+                   data-field="nome_sala" required>
+        </td>
+        <td>
+            <input type="text" class="form-control form-control-sm" 
+                   placeholder="Hostname" 
+                   data-field="hostname" required>
+        </td>
+        <td>
+            <input type="text" class="form-control form-control-sm" 
+                   placeholder="Setor (opcional)" 
+                   data-field="setor"
+                   style="width: 100px;">
+        </td>
+        <td>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-primary disabled" 
+                        title="Salve a sala primeiro para habilitar">
+                    <i class="bi bi-download"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-info disabled" 
+                        title="Salve a sala primeiro para habilitar">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </td>
+        <td>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-success" 
+                        onclick="salvarNovaSala(this.parentElement.parentElement.parentElement)">
+                    <i class="bi bi-check"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" 
+                        onclick="cancelarNovaSala(this.parentElement.parentElement.parentElement)">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        </td>
+    `;
+    
+    tbody.appendChild(novaLinha);
+    
+
+    novaLinha.querySelector('input[data-field="nome_sala"]').focus();
+    
+
+    const mensagemVazia = document.getElementById('mensagemVazia');
+    if (mensagemVazia) {
+        mensagemVazia.style.display = 'none';
+    }
+}
+
+
+function cancelarNovaSala(linha) {
+    linha.remove();
+    
+
+    const tbody = document.querySelector('#tabelaSalas tbody');
+    if (tbody.children.length === 0) {
+        const mensagemVazia = document.getElementById('mensagemVazia');
+        if (mensagemVazia) {
+            mensagemVazia.style.display = 'block';
+        }
+    }
+}
+
+
+function salvarNovaSala(linha) {
+    const inputs = linha.querySelectorAll('input');
+    const data = {};
+    let temDadosObrigatorios = true;
+    
+    inputs.forEach(input => {
+        const field = input.getAttribute('data-field');
+        const value = input.value.trim();
+        
+        if ((field === 'nome_sala' || field === 'hostname') && !value) {
+            temDadosObrigatorios = false;
+            input.classList.add('is-invalid');
+        } else {
+            input.classList.remove('is-invalid');
+            data[field] = value;
+        }
+    });
+    
+    if (!temDadosObrigatorios) {
+        mostrarErro('Nome da sala e hostname são obrigatórios');
+        return;
+    }
+    
+
+    fetch('/api/salas', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            mostrarSucesso('Sala adicionada com sucesso!');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            mostrarErro(result.error || 'Erro ao salvar sala');
+        }
+    })
+    .catch(error => {
+        mostrarErro('Erro de conexão: ' + error.message);
+    });
+}
+
+
+function salvarSala(id, linha) {
+    const inputs = linha.querySelectorAll('input');
+    const data = {};
+    const botaoSalvar = document.getElementById(`salvar-${id}`);
+    
+    inputs.forEach(input => {
+        const field = input.getAttribute('data-field');
+        data[field] = input.value.trim();
+    });
+    
+
+    if (!data.nome_sala || !data.hostname) {
+        mostrarErro('Nome da sala e hostname são obrigatórios');
+        return;
+    }
+    
+
+    if (botaoSalvar) {
+        botaoSalvar.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+        botaoSalvar.disabled = true;
+    }
+    
+
+    fetch(`/api/salas/${id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            mostrarSucesso('Sala atualizada com sucesso!');
+            linha.classList.add('table-success');
+            
+            if (botaoSalvar) {
+                botaoSalvar.innerHTML = '<i class="bi bi-check"></i>';
+                botaoSalvar.classList.remove('btn-warning');
+                botaoSalvar.classList.add('btn-success');
+                setTimeout(() => {
+                    botaoSalvar.style.display = 'none';
+                    botaoSalvar.disabled = false;
+                }, 2000);
+            }
+            
+            setTimeout(() => {
+                linha.classList.remove('table-success');
+            }, 2000);
+        } else {
+            mostrarErro(result.error || 'Erro ao salvar sala');
+            if (botaoSalvar) {
+                botaoSalvar.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
+                botaoSalvar.disabled = false;
+            }
+        }
+    })
+    .catch(error => {
+        mostrarErro('Erro de conexão: ' + error.message);
+        if (botaoSalvar) {
+            botaoSalvar.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
+            botaoSalvar.disabled = false;
+        }
+    });
+}
+
+
+function excluirSala(id, nome) {
+    if (confirmarExclusao(nome)) {
+        fetch(`/api/salas/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarSucesso('Sala excluída com sucesso!');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                mostrarErro(data.error || 'Erro ao excluir sala');
+            }
+        })
+        .catch(error => {
+            mostrarErro('Erro de conexão: ' + error.message);
+        });
+    }
+}
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('input', function(e) {
+        if (e.target.matches('input[data-field="nome_sala"], input[data-field="hostname"]')) {
+            if (e.target.value.trim()) {
+                e.target.classList.remove('is-invalid');
+            }
+        }
+    });
+});
+
+document.getElementById('modalImportarHostnames').addEventListener('show.bs.modal', function (e) {
+    carregarHostnames();
+});
+
+function carregarHostnames() {
+    const containerHostnames = document.getElementById('containerHostnames');
+    const loadingHostnames = document.getElementById('loadingHostnames');
+    const errorHostnames = document.getElementById('errorHostnames');
+    const listaHostnames = document.getElementById('listaHostnames');
+    const btnImportarSelecionados = document.getElementById('btnImportarSelecionados');
+    const contadorSelecionados = document.getElementById('contadorSelecionados');
+    
+    containerHostnames.classList.add('d-none');
+    errorHostnames.classList.add('d-none');
+    loadingHostnames.classList.remove('d-none');
+    btnImportarSelecionados.disabled = true;
+    
+    fetch('/api/ad/hostnames')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Falha ao obter hostnames do AD');
+            }
+            return response.json();
+        })
+        .then(data => {
+            loadingHostnames.classList.add('d-none');
+            
+            if (data.success && data.hostnames && data.hostnames.length > 0) {
+                listaHostnames.innerHTML = '';
+                
+                data.hostnames.forEach(hostname => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>
+                            <div class="form-check">
+                                <input class="form-check-input hostname-check" type="checkbox" value="${hostname}" checked>
+                            </div>
+                        </td>
+                        <td>${hostname}</td>
+                    `;
+                    listaHostnames.appendChild(tr);
+                });
+                
+                atualizarContador();
+                containerHostnames.classList.remove('d-none');
+                btnImportarSelecionados.disabled = false;
+                
+                adicionarEventosCheckbox();
+            } else {
+                errorHostnames.querySelector('#errorMessage').textContent = data.error || 'Nenhum hostname encontrado no Active Directory.';
+                errorHostnames.classList.remove('d-none');
+            }
+        })
+        .catch(error => {
+            loadingHostnames.classList.add('d-none');
+            errorHostnames.querySelector('#errorMessage').textContent = error.message;
+            errorHostnames.classList.remove('d-none');
+            console.error('Erro:', error);
+        });
+}
+
+function adicionarEventosCheckbox() {
+    const checkTodos = document.getElementById('checkTodos');
+    const checkboxes = document.querySelectorAll('.hostname-check');
+    
+    checkTodos.addEventListener('change', function() {
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        atualizarContador();
+    });
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            atualizarContador();
+            verificarTodosMarcados();
+        });
+    });
+    
+    document.getElementById('btnSelecionarTodos').addEventListener('click', function() {
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        checkTodos.checked = true;
+        atualizarContador();
+    });
+    
+    document.getElementById('btnDesmarcarTodos').addEventListener('click', function() {
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        checkTodos.checked = false;
+        atualizarContador();
+    });
+    
+    document.getElementById('pesquisaHostnames').addEventListener('input', function(e) {
+        const termo = e.target.value.toLowerCase();
+        
+        checkboxes.forEach(checkbox => {
+            const tr = checkbox.closest('tr');
+            const hostname = checkbox.value.toLowerCase();
+            
+            if (hostname.includes(termo)) {
+                tr.style.display = '';
+            } else {
+                tr.style.display = 'none';
+            }
+        });
+    });
+    
+    document.getElementById('btnImportarSelecionados').addEventListener('click', function() {
+        const hostnames = [];
+        checkboxes.forEach(checkbox => {
+            if (checkbox.checked) {
+                hostnames.push(checkbox.value);
+            }
+        });
+        
+        if (hostnames.length === 0) {
+            mostrarErro('Selecione pelo menos um hostname para importar.');
+            return;
+        }
+        
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Importando...';
+        
+        fetch('/api/ad/importar-hostnames', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ hostnames })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarSucesso(`${data.importados} hostnames importados com sucesso!`);
+                setTimeout(() => {
+                    bootstrap.Modal.getInstance(document.getElementById('modalImportarHostnames')).hide();
+                    location.reload();
+                }, 1500);
+            } else {
+                mostrarErro(data.error || 'Erro ao importar hostnames');
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-cloud-download me-1"></i> Importar Selecionados';
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            mostrarErro('Erro ao importar hostnames');
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-cloud-download me-1"></i> Importar Selecionados';
+        });
+    });
+}
+
+function verificarTodosMarcados() {
+    const checkTodos = document.getElementById('checkTodos');
+    const checkboxes = document.querySelectorAll('.hostname-check');
+    const todosMarcados = Array.from(checkboxes).every(checkbox => checkbox.checked);
+    
+    checkTodos.checked = todosMarcados;
+}
+
+function atualizarContador() {
+    const checkboxes = document.querySelectorAll('.hostname-check:checked');
+    const contadorSelecionados = document.getElementById('contadorSelecionados');
+    const btnImportarSelecionados = document.getElementById('btnImportarSelecionados');
+    
+    contadorSelecionados.textContent = `${checkboxes.length} selecionados`;
+    btnImportarSelecionados.disabled = checkboxes.length === 0;
+}
+
+function copiarArquivo(hostname, id) {
+    if (!hostname || hostname.trim() === '') {
+        mostrarErro('Hostname inválido');
+        return;
+    }
+    
+    const botao = event.target.closest('button');
+    const textoOriginal = botao.innerHTML;
+    const statusBadge = document.getElementById(`status-${id}`);
+    
+    botao.disabled = true;
+    botao.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+    
+    if (statusBadge) {
+        statusBadge.textContent = 'Copiando';
+        statusBadge.className = 'badge bg-warning';
+    }
+    
+    fetch('/api/copiar-arquivo', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ hostname: hostname })
+    })
+    .then(response => response.json())
+    .then(data => {
+        botao.disabled = false;
+        botao.innerHTML = textoOriginal;
+        
+        if (data.success) {
+            mostrarSucesso(data.message);
+            botao.classList.remove('btn-outline-primary');
+            botao.classList.add('btn-success');
+            
+            if (statusBadge) {
+                statusBadge.textContent = 'Instalado';
+                statusBadge.className = 'badge bg-success';
+                atualizarStatusBanco(id, 'Instalado');
+            }
+            
+            setTimeout(() => {
+                botao.classList.remove('btn-success');
+                botao.classList.add('btn-outline-primary');
+            }, 3000);
+        } else {
+            mostrarErro(data.error || 'Erro ao copiar arquivo');
+            if (statusBadge) {
+                statusBadge.textContent = 'Erro';
+                statusBadge.className = 'badge bg-danger';
+                atualizarStatusBanco(id, 'Erro');
+            }
+        }
+    })
+    .catch(error => {
+        botao.disabled = false;
+        botao.innerHTML = textoOriginal;
+        mostrarErro('Erro de conexão: ' + error.message);
+        
+        if (statusBadge) {
+            statusBadge.textContent = 'Erro';
+            statusBadge.className = 'badge bg-danger';
+            atualizarStatusBanco(id, 'Erro');
+        }
+    });
+}
+
+function verificarArquivo(hostname, id) {
+    if (!hostname || hostname.trim() === '') {
+        mostrarErro('Hostname inválido');
+        return;
+    }
+    
+    const botao = event.target.closest('button');
+    const textoOriginal = botao.innerHTML;
+    const statusBadge = document.getElementById(`status-${id}`);
+    
+    botao.disabled = true;
+    botao.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+    
+    fetch('/api/verificar-arquivo', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ hostname: hostname })
+    })
+    .then(response => response.json())
+    .then(data => {
+        botao.disabled = false;
+        botao.innerHTML = textoOriginal;
+        
+        if (data.success) {
+            if (data.existe) {
+                const tamanhoKB = Math.round(data.tamanho / 1024);
+                const nomeArquivo = data.nome_arquivo || 'arquivo';
+                mostrarSucesso(`Arquivo encontrado em ${hostname}: ${nomeArquivo} (${tamanhoKB} KB)`);
+                botao.classList.remove('btn-outline-info');
+                botao.classList.add('btn-success');
+                
+                if (statusBadge) {
+                    statusBadge.textContent = 'Instalado';
+                    statusBadge.className = 'badge bg-success';
+                    atualizarStatusBanco(id, 'Instalado');
+                }
+                
+                setTimeout(() => {
+                    botao.classList.remove('btn-success');
+                    botao.classList.add('btn-outline-info');
+                }, 3000);
+            } else {
+                const nomesTestados = data.nomes_testados ? data.nomes_testados.join(', ') : 'nomes padrão';
+                mostrarAviso(`Arquivo não encontrado em ${hostname}. Testados: ${nomesTestados}`);
+                botao.classList.remove('btn-outline-info');
+                botao.classList.add('btn-warning');
+                
+                if (statusBadge) {
+                    statusBadge.textContent = 'Não instalado';
+                    statusBadge.className = 'badge bg-secondary';
+                    atualizarStatusBanco(id, 'Não instalado');
+                }
+                
+                setTimeout(() => {
+                    botao.classList.remove('btn-warning');
+                    botao.classList.add('btn-outline-info');
+                }, 3000);
+            }
+        } else {
+            mostrarErro(data.error || 'Erro ao verificar arquivo');
+        }
+    })
+    .catch(error => {
+        botao.disabled = false;
+        botao.innerHTML = textoOriginal;
+        mostrarErro('Erro de conexão: ' + error.message);
+    });
+}
+
+function atualizarStatusBanco(id, status) {
+    fetch(`/api/salas/${id}/status`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status_instalacao: status })
+    })
+    .catch(error => {
+        console.error('Erro ao atualizar status no banco:', error);
+    });
+}
+
+function testarCredenciais(hostname) {
+    if (!hostname || hostname.trim() === '') {
+        mostrarErro('Hostname inválido');
+        return;
+    }
+    
+    const botao = event.target.closest('button');
+    const textoOriginal = botao.innerHTML;
+    
+    botao.disabled = true;
+    botao.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+    
+    fetch('/api/testar-credenciais', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ hostname: hostname })
+    })
+    .then(response => response.json())
+    .then(data => {
+        botao.disabled = false;
+        botao.innerHTML = textoOriginal;
+        
+        if (data.success) {
+            mostrarSucesso(`Credenciais válidas para ${hostname}: ${data.message}`);
+            botao.classList.remove('btn-outline-warning');
+            botao.classList.add('btn-success');
+            setTimeout(() => {
+                botao.classList.remove('btn-success');
+                botao.classList.add('btn-outline-warning');
+            }, 3000);
+        } else {
+            mostrarErro(`Falha na autenticação para ${hostname}: ${data.error}`);
+            botao.classList.remove('btn-outline-warning');
+            botao.classList.add('btn-danger');
+            setTimeout(() => {
+                botao.classList.remove('btn-danger');
+                botao.classList.add('btn-outline-warning');
+            }, 3000);
+        }
+    })
+    .catch(error => {
+        botao.disabled = false;
+        botao.innerHTML = textoOriginal;
+        mostrarErro('Erro de conexão: ' + error.message);
+    });
+}
+
+</script>
+
+<style>
+.is-invalid {
+    border-color: #dc3545;
+}
+.table-success {
+    background-color: #d1edff !important;
+    transition: background-color 0.3s ease;
+}
+.table-warning {
+    background-color: #fff3cd !important;
+}
+
+
+</style>
+{% endblock %} 

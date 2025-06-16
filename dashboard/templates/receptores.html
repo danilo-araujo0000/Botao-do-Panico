@@ -1,0 +1,610 @@
+{% extends "base.html" %}
+
+{% block page_title %}Gerenciar Receptores{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0">Receptores Cadastrados</h4>
+        <p class="text-muted">Gerencie os receptores que recebem os alertas do sistema</p>
+    </div>
+    <button type="button" class="btn btn-primary" onclick="adicionarNovoReceptor()">
+        <i class="bi bi-plus-circle me-2"></i>Novo Receptor
+    </button>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body py-2">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="pesquisaReceptores" 
+                           placeholder="Pesquisar por IP, nome ou setor..." 
+                           onkeyup="pesquisarReceptores()">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="ordenarReceptores" onchange="ordenarTabelaReceptores()">
+                    <option value="ip_receptor">Ordenar por IP</option>
+                    <option value="nome_receptor">Ordenar por Nome</option>
+                    <option value="setor">Ordenar por Setor</option>
+                    <option value="id">Ordenar por ID</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <div class="btn-group w-100" role="group">
+                    <button type="button" class="btn btn-outline-secondary" onclick="ordenarAscReceptores = true; ordenarTabelaReceptores()">
+                        <i class="bi bi-sort-alpha-down"></i> A-Z
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="ordenarAscReceptores = false; ordenarTabelaReceptores()">
+                        <i class="bi bi-sort-alpha-up"></i> Z-A
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover" id="tabelaReceptores">
+                <thead class="table-light">
+                    <tr>
+                        <th width="80">ID</th>
+                        <th width="150">IP do Receptor</th>
+                        <th width="150">Nome</th>
+                        <th width="120">Setor</th>
+                        <th width="100">Status</th>
+                        <th width="100">Conexão</th>
+                        <th width="250">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for receptor in receptores %}
+                    <tr data-id="{{ receptor.id }}">
+                        <td><span class="badge bg-secondary">{{ receptor.id }}</span></td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm" 
+                                   value="{{ receptor.ip_receptor }}" 
+                                   oninput="marcarAlteradoReceptor({{ receptor.id }})"
+                                   data-field="ip_receptor"
+                                   pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm" 
+                                   value="{{ receptor.nome_receptor or '' }}" 
+                                   oninput="marcarAlteradoReceptor({{ receptor.id }})"
+                                   data-field="nome_receptor">
+                        </td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm" 
+                                   value="{{ receptor.setor or '' }}" 
+                                   oninput="marcarAlteradoReceptor({{ receptor.id }})"
+                                   data-field="setor">
+                        </td>
+                        <td>
+                            {% set status = receptor.status_receptor or 'Não verificado' %}
+                            {% if status == 'Instalado' %}
+                                <span class="badge bg-success" id="status-receptor-{{ receptor.id }}">
+                                    <i class="bi bi-check-circle"></i> {{ status }}
+                                </span>
+                            {% elif status == 'Não instalado' %}
+                                <span class="badge bg-danger" id="status-receptor-{{ receptor.id }}">
+                                    <i class="bi bi-x-circle"></i> {{ status }}
+                                </span>
+                            {% elif status == 'Não verificado' %}
+                                <span class="badge bg-secondary" id="status-receptor-{{ receptor.id }}">
+                                    <i class="bi bi-question-circle"></i> {{ status }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-info" id="status-receptor-{{ receptor.id }}">
+                                    <i class="bi bi-info-circle"></i> {{ status }}
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-warning" id="ping-status-{{ receptor.id }}">
+                                <i class="bi bi-clock"></i> Testando...
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-success" 
+                                        id="salvar-receptor-{{ receptor.id }}" 
+                                        onclick="salvarReceptor({{ receptor.id }}, this.closest('tr'))"
+                                        style="display: none;">
+                                    <i class="bi bi-check"></i>
+                                                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-success" 
+                                        onclick="testarConexaoReceptor('{{ receptor.ip_receptor }}', {{ receptor.id }})"
+                                        title="Testar conexão">
+                                    <i class="bi bi-wifi"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-primary" 
+                                        onclick="instalarReceptor('{{ receptor.ip_receptor }}', {{ receptor.id }})"
+                                        title="Instalar Receptor">
+                                    <i class="bi bi-download"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-info" 
+                                        onclick="verificarReceptor('{{ receptor.ip_receptor }}', {{ receptor.id }})"
+                                        title="Verificar Instalação">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                        onclick="excluirReceptor({{ receptor.id }}, '{{ receptor.ip_receptor }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if not receptores %}
+        <div class="text-center py-5" id="mensagemVaziaReceptores">
+            <i class="bi bi-router text-muted" style="font-size: 3rem;"></i>
+            <h5 class="mt-3 text-muted">Nenhum receptor cadastrado</h5>
+            <p class="text-muted">Clique em "Novo Receptor" para adicionar o primeiro receptor.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let contadorNovosReceptores = 0;
+let ordenarAscReceptores = true;
+
+function marcarAlteradoReceptor(id) {
+    const botaoSalvar = document.getElementById(`salvar-receptor-${id}`);
+    if (botaoSalvar) {
+        botaoSalvar.style.display = 'inline-block';
+        botaoSalvar.classList.add('btn-warning');
+        botaoSalvar.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
+    }
+}
+
+function pesquisarReceptores() {
+    const input = document.getElementById('pesquisaReceptores');
+    const filter = input.value.toLowerCase();
+    const tbody = document.querySelector('#tabelaReceptores tbody');
+    const rows = tbody.getElementsByTagName('tr');
+
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const cells = row.getElementsByTagName('td');
+        let found = false;
+
+        for (let j = 1; j <= 3; j++) {
+            if (cells[j]) {
+                const input = cells[j].querySelector('input');
+                const text = input ? input.value.toLowerCase() : cells[j].textContent.toLowerCase();
+                if (text.includes(filter)) {
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        row.style.display = found ? '' : 'none';
+    }
+}
+
+function ordenarTabelaReceptores() {
+    const select = document.getElementById('ordenarReceptores');
+    const campo = select.value;
+    const tbody = document.querySelector('#tabelaReceptores tbody');
+    const rows = Array.from(tbody.getElementsByTagName('tr'));
+
+    rows.sort((a, b) => {
+        let aVal, bVal;
+        
+        if (campo === 'id') {
+            aVal = parseInt(a.getAttribute('data-id'));
+            bVal = parseInt(b.getAttribute('data-id'));
+        } else {
+            const aInput = a.querySelector(`input[data-field="${campo}"]`);
+            const bInput = b.querySelector(`input[data-field="${campo}"]`);
+            aVal = aInput ? aInput.value.toLowerCase() : '';
+            bVal = bInput ? bInput.value.toLowerCase() : '';
+        }
+
+        if (ordenarAscReceptores) {
+            return aVal > bVal ? 1 : -1;
+        } else {
+            return aVal < bVal ? 1 : -1;
+        }
+    });
+
+    rows.forEach(row => tbody.appendChild(row));
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    {% for receptor in receptores %}
+        testarConexaoReceptor('{{ receptor.ip_receptor }}', {{ receptor.id }});
+    {% endfor %}
+});
+
+function adicionarNovoReceptor() {
+    contadorNovosReceptores++;
+    const tbody = document.querySelector('#tabelaReceptores tbody');
+    const novaLinha = document.createElement('tr');
+    novaLinha.setAttribute('data-id', 'novo-' + contadorNovosReceptores);
+    novaLinha.classList.add('table-warning'); 
+    
+    novaLinha.innerHTML = `
+        <td><span class="badge bg-info">NOVO</span></td>
+        <td>
+            <input type="text" class="form-control form-control-sm" 
+                   placeholder="172.19.0.0"
+                   onblur="salvarNovoReceptor(this.parentElement.parentElement)"
+                   data-field="ip_receptor" 
+                   pattern="^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$" required>
+        </td>
+        <td>
+            <input type="text" class="form-control form-control-sm" 
+                   placeholder="Nome do receptor" 
+                   onblur="salvarNovoReceptor(this.parentElement.parentElement)"
+                   data-field="nome_receptor">
+        </td>
+                 <td>
+             <input type="text" class="form-control form-control-sm" 
+                    placeholder="Setor (opcional)" 
+                    onblur="salvarNovoReceptor(this.parentElement.parentElement)"
+                    data-field="setor">
+         </td>
+        <td>
+            <span class="badge bg-secondary">Novo</span>
+        </td>
+        <td>
+            <span class="badge bg-secondary">-</span>
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm btn-outline-secondary" 
+                    onclick="cancelarNovoReceptor(this.parentElement.parentElement)">
+                <i class="bi bi-x"></i>
+            </button>
+        </td>
+    `;
+    
+    tbody.appendChild(novaLinha);
+    
+    novaLinha.querySelector('input[data-field="ip_receptor"]').focus();
+    
+    const mensagemVazia = document.getElementById('mensagemVaziaReceptores');
+    if (mensagemVazia) {
+        mensagemVazia.style.display = 'none';
+    }
+}
+
+function cancelarNovoReceptor(linha) {
+    linha.remove();
+    
+    const tbody = document.querySelector('#tabelaReceptores tbody');
+    if (tbody.children.length === 0) {
+        const mensagemVazia = document.getElementById('mensagemVaziaReceptores');
+        if (mensagemVazia) {
+            mensagemVazia.style.display = 'block';
+        }
+    }
+}
+
+function validarIP(ip) {
+    const regex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+    if (!regex.test(ip)) return false;
+    
+    const parts = ip.split('.');
+    return parts.every(part => {
+        const num = parseInt(part, 10);
+        return num >= 0 && num <= 255;
+    });
+}
+
+function salvarNovoReceptor(linha) {
+    const inputs = linha.querySelectorAll('input');
+    const data = {};
+    let temDadosObrigatorios = true;
+    
+    inputs.forEach(input => {
+        const field = input.getAttribute('data-field');
+        const value = input.value.trim();
+        
+        if (field === 'ip_receptor') {
+            if (!value || !validarIP(value)) {
+                temDadosObrigatorios = false;
+                input.classList.add('is-invalid');
+            } else {
+                input.classList.remove('is-invalid');
+                data[field] = value;
+            }
+        } else {
+            input.classList.remove('is-invalid');
+            data[field] = value;
+        }
+    });
+    
+    if (!temDadosObrigatorios) {
+        mostrarErro('IP do receptor é obrigatório e deve ser válido');
+        return;
+    }
+    
+    fetch('/api/receptores', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            mostrarSucesso('Receptor adicionado com sucesso!');
+            testarConexaoReceptor(data.ip_receptor, result.id);
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            mostrarErro(result.error || 'Erro ao salvar receptor');
+        }
+    })
+    .catch(error => {
+        mostrarErro('Erro de conexão: ' + error.message);
+    });
+}
+
+function salvarReceptor(id, linha) {
+    const inputs = linha.querySelectorAll('input');
+    const data = {};
+    const botaoSalvar = document.getElementById(`salvar-receptor-${id}`);
+    let ipValido = true;
+    
+    inputs.forEach(input => {
+        const field = input.getAttribute('data-field');
+        const value = input.value.trim();
+        
+        if (field === 'ip_receptor') {
+            if (!validarIP(value)) {
+                ipValido = false;
+                input.classList.add('is-invalid');
+            } else {
+                input.classList.remove('is-invalid');
+            }
+        }
+        
+        data[field] = value;
+    });
+    
+    if (!ipValido) {
+        mostrarErro('IP do receptor deve ser válido');
+        return;
+    }
+    
+    if (botaoSalvar) {
+        botaoSalvar.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+        botaoSalvar.disabled = true;
+    }
+    
+    fetch(`/api/receptores/${id}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            mostrarSucesso('Receptor atualizado com sucesso!');
+            linha.classList.add('table-success');
+            
+            if (botaoSalvar) {
+                botaoSalvar.innerHTML = '<i class="bi bi-check"></i>';
+                botaoSalvar.classList.remove('btn-warning');
+                botaoSalvar.classList.add('btn-success');
+                setTimeout(() => {
+                    botaoSalvar.style.display = 'none';
+                    botaoSalvar.disabled = false;
+                }, 2000);
+            }
+            
+            setTimeout(() => {
+                linha.classList.remove('table-success');
+                const ipInput = linha.querySelector('input[data-field="ip_receptor"]');
+                if (ipInput) {
+                    testarConexaoReceptor(ipInput.value, id);
+                }
+            }, 2000);
+        } else {
+            mostrarErro(result.error || 'Erro ao salvar receptor');
+            if (botaoSalvar) {
+                botaoSalvar.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
+                botaoSalvar.disabled = false;
+            }
+        }
+    })
+    .catch(error => {
+        mostrarErro('Erro de conexão: ' + error.message);
+        if (botaoSalvar) {
+            botaoSalvar.innerHTML = '<i class="bi bi-exclamation-triangle"></i>';
+            botaoSalvar.disabled = false;
+        }
+    });
+}
+
+async function testarConexaoReceptor(ip, id) {
+    const pingStatusElement = document.getElementById(`ping-status-${id}`);
+    if (!pingStatusElement) return;
+    
+    pingStatusElement.innerHTML = '<i class="bi bi-clock"></i> Testando...';
+    pingStatusElement.className = 'badge bg-warning';
+    
+    try {
+        const response = await fetch('/api/receptor/testar-conexao', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ip_receptor: ip
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.status === 'online') {
+            pingStatusElement.innerHTML = '<i class="bi bi-check-circle"></i> Online';
+            pingStatusElement.className = 'badge bg-success';
+        } else if (data.success && data.status === 'timeout') {
+            pingStatusElement.innerHTML = '<i class="bi bi-clock-history"></i> Timeout';
+            pingStatusElement.className = 'badge bg-warning';
+        } else if (data.success && data.status === 'offline') {
+            pingStatusElement.innerHTML = '<i class="bi bi-x-circle"></i> Offline';
+            pingStatusElement.className = 'badge bg-danger';
+        } else if (data.success && data.status === 'error') {
+            pingStatusElement.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Erro';
+            pingStatusElement.className = 'badge bg-danger';
+        } else {
+            pingStatusElement.innerHTML = '<i class="bi bi-question-circle"></i> Erro';
+            pingStatusElement.className = 'badge bg-secondary';
+        }
+    } catch (error) {
+        pingStatusElement.innerHTML = '<i class="bi bi-wifi-off"></i> Falha';
+        pingStatusElement.className = 'badge bg-danger';
+        console.error('Erro ao testar conectividade:', error);
+    }
+}
+
+function excluirReceptor(id, ip) {
+    if (confirmarExclusao(ip)) {
+        fetch(`/api/receptores/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarSucesso('Receptor excluído com sucesso!');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                mostrarErro(data.error || 'Erro ao excluir receptor');
+            }
+        })
+        .catch(error => {
+            mostrarErro('Erro de conexão: ' + error.message);
+        });
+    }
+}
+
+function instalarReceptor(ip, id) {
+    if (confirm(`Deseja instalar o receptor no IP ${ip}?`)) {
+        const botao = event.target.closest('button');
+        const textoOriginal = botao.innerHTML;
+        
+        botao.disabled = true;
+        botao.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+        
+        fetch('/api/receptor/instalar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ip_receptor: ip,
+                receptor_id: id
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            botao.disabled = false;
+            botao.innerHTML = textoOriginal;
+            
+            if (data.success) {
+                alert(`Receptor instalado com sucesso em ${ip}!`);
+                const statusElement = document.getElementById(`status-receptor-${id}`);
+                statusElement.className = 'badge bg-success';
+                statusElement.innerHTML = '<i class="bi bi-check-circle"></i> Instalado';
+                verificarReceptor(ip, id);
+            } else {
+                alert('Erro: ' + (data.error || 'Erro desconhecido'));
+            }
+        })
+        .catch(error => {
+            botao.disabled = false;
+            botao.innerHTML = textoOriginal;
+            alert('Erro de conexão: ' + error.message);
+        });
+    }
+}
+
+function verificarReceptor(ip, id) {
+    const botao = event.target.closest('button');
+    const textoOriginal = botao.innerHTML;
+    
+    botao.disabled = true;
+    botao.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+    
+    fetch('/api/receptor/verificar', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            ip_receptor: ip,
+            receptor_id: id
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        botao.disabled = false;
+        botao.innerHTML = textoOriginal;
+        
+        if (data.existe) {
+            alert(`Receptor encontrado em ${ip}!`);
+            const statusElement = document.getElementById(`status-receptor-${id}`);
+            statusElement.className = 'badge bg-success';
+            statusElement.innerHTML = '<i class="bi bi-check-circle"></i> Instalado';
+        } else {
+            alert(`Receptor não encontrado em ${ip}`);
+            const statusElement = document.getElementById(`status-receptor-${id}`);
+            statusElement.className = 'badge bg-danger';
+            statusElement.innerHTML = '<i class="bi bi-x-circle"></i> Não instalado';
+        }
+    })
+    .catch(error => {
+        botao.disabled = false;
+        botao.innerHTML = textoOriginal;
+        alert('Erro de conexão: ' + error.message);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('input', function(e) {
+        if (e.target.matches('input[data-field="ip_receptor"]')) {
+            if (validarIP(e.target.value.trim())) {
+                e.target.classList.remove('is-invalid');
+            }
+        }
+    });
+});
+</script>
+
+<style>
+.is-invalid {
+    border-color: #dc3545;
+}
+.table-success {
+    background-color: #d1edff !important;
+    transition: background-color 0.3s ease;
+}
+.table-warning {
+    background-color: #fff3cd !important;
+}
+</style>
+{% endblock %} 

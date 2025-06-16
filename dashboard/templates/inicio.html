@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block page_title %}Visão Geral{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total de Salas
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" style="font-size: 2rem;">{{ total_salas }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-building-check fa-2x text-gray-300" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Total de Usuários
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" style="font-size: 2rem;">{{ total_usuarios }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-people fa-2x text-gray-300" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Total de Receptores
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800" style="font-size: 2rem;">{{ total_receptores }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-router fa-2x text-gray-300" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Status do Servidor
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold">
+                            {% if status_servidor %}
+                                <span class="status-online">
+                                    <i class="bi bi-check-circle"></i> Online
+                                </span>
+                            {% else %}
+                                <span class="status-offline">
+                                    <i class="bi bi-x-circle"></i> Offline
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-server fa-2x text-gray-300" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Últimos Acionamentos
+                </h6>
+                <a href="{{ url_for('main.logs') }}?tipo=alertas" class="btn btn-sm btn-outline-primary">
+                    Ver Todos
+                </a>
+            </div>
+            <div class="card-body">
+                {% if ultimos_acionamentos %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Sala</th>
+                                    <th>Usuário</th>
+                                    <th>Data/Hora</th>
+                                    <th>Receptores</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for acionamento in ultimos_acionamentos %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ acionamento.nome_sala }}</strong>
+                                    </td>
+                                    <td>{{ acionamento.nome_usuario }}</td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ acionamento.data_hora.strftime('%d/%m/%Y %H:%M:%S') }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ acionamento.enviados_sucesso }}/{{ acionamento.total_receptores }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        {% if acionamento.enviados_sucesso == acionamento.total_receptores %}
+                                            <span class="badge bg-success">Completo</span>
+                                        {% elif acionamento.enviados_sucesso > 0 %}
+                                            <span class="badge bg-warning">Parcial</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Falhou</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-info-circle text-muted" style="font-size: 2rem;"></i>
+                        <p class="text-muted mt-2">Nenhum acionamento registrado ainda.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-journal-text me-2"></i>
+                    Logs do Sistema
+                </h6>
+                <a href="{{ url_for('main.logs') }}?tipo=sistema" class="btn btn-sm btn-outline-primary">
+                    Ver Todos
+                </a>
+            </div>
+            <div class="card-body">
+                {% if ultimos_logs %}
+                    <div class="timeline">
+                        {% for log in ultimos_logs %}
+                        <div class="timeline-item mb-3">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <i class="bi bi-circle-fill text-primary" style="font-size: 0.5rem;"></i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <div class="small text-muted">
+                                        {{ log.data_hora.strftime('%d/%m/%Y %H:%M:%S') }}
+                                    </div>
+                                    <div class="small">
+                                        {{ log.log }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-info-circle text-muted" style="font-size: 2rem;"></i>
+                        <p class="text-muted mt-2">Nenhum log do sistema encontrado.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-activity me-2"></i>
+                    Status do Sistema em Tempo Real
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <div class="p-3">
+                            <h5 class="{% if status_servidor %}status-online{% else %}status-offline{% endif %}">
+                                <i class="bi bi-{% if status_servidor %}check-circle{% else %}x-circle{% endif %} me-2"></i>
+                                Servidor Principal
+                            </h5>
+                            <p class="text-muted">
+                                {% if status_servidor %}
+                                    Funcionando normalmente
+                                {% else %}
+                                    Servidor offline ou inacessível
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3">
+                            <h5 class="status-online">
+                                <i class="bi bi-database me-2"></i>
+                                Banco de Dados
+                            </h5>
+                            <p class="text-muted">Conectado e funcionando</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3">
+                            <h5 class="status-online">
+                                <i class="bi bi-speedometer2 me-2"></i>
+                                Dashboard
+                            </h5>
+                            <p class="text-muted">Atualização automática ativa</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+    .border-left-primary {
+        border-left: 0.25rem solid #4e73df !important;
+    }
+    .border-left-success {
+        border-left: 0.25rem solid #1cc88a !important;
+    }
+    .border-left-info {
+        border-left: 0.25rem solid #36b9cc !important;
+    }
+    .border-left-warning {
+        border-left: 0.25rem solid #f6c23e !important;
+    }
+    .timeline-item {
+        position: relative;
+    }
+    .timeline-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        left: 4px;
+        top: 20px;
+        height: calc(100% - 10px);
+        width: 1px;
+        background-color: #dee2e6;
+    }
+</style>
+{% endblock %} 

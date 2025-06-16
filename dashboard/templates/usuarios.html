@@ -1,0 +1,662 @@
+{% extends "base.html" %}
+
+{% block page_title %}Gerenciar Usuários{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="mb-0">Usuários Cadastrados</h4>
+        <p class="text-muted">Gerencie os usuários</p>
+    </div>
+    <div class="btn-group">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalUsuario">
+            <i class="bi bi-plus-circle me-2"></i>Novo Usuário
+        </button>
+        <button type="button" class="btn btn-outline-info" onclick="abrirModalImportarUsuarios()">
+            <i class="bi bi-cloud-download me-2"></i>Importar do AD
+        </button>
+        <button type="button" class="btn btn-outline-success" onclick="abrirModalSincronizacao()">
+            <i class="bi bi-arrow-repeat me-2"></i>Sinc
+        </button>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-body">
+        {% if usuarios %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome Completo</th>
+                            <th>Username</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for usuario in usuarios %}
+                        <tr>
+                            <td><span class="badge bg-secondary">{{ usuario.id }}</span></td>
+                            <td><strong>{{ usuario.nome_usuario }}</strong></td>
+                            <td><code>{{ usuario.USERNAME }}</code></td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" 
+                                            onclick="editarUsuario({{ usuario.id }}, '{{ usuario.nome_usuario }}', '{{ usuario.USERNAME }}')">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            onclick="excluirUsuario({{ usuario.id }}, '{{ usuario.nome_usuario }}')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-people text-muted" style="font-size: 3rem;"></i>
+                <h5 class="mt-3 text-muted">Nenhum usuário cadastrado</h5>
+                <p class="text-muted">Clique em "Novo Usuário" para adicionar o primeiro usuário.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="modalUsuario" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalUsuarioTitle">Novo Usuário</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formUsuario">
+                <div class="modal-body">
+                    <input type="hidden" id="usuarioId" name="usuarioId">
+                    
+                    <div class="mb-3">
+                        <label for="nomeUsuario" class="form-label">Nome Completo *</label>
+                        <input type="text" class="form-control" id="nomeUsuario" name="nomeUsuario" required>
+                        <div class="form-text">Nome completo do usuário</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username *</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                        <div class="form-text">Nome de usuário do Windows (login)</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-2"></i>Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalImportarUsuarios" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-cloud-download me-2"></i>
+                    Importar Usuários do Active Directory
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text" class="form-control" id="pesquisaUsuarios" placeholder="Pesquisar usuários...">
+                    </div>
+                </div>
+                
+                <div id="loadingUsuarios" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2">Consultando Active Directory...</p>
+                </div>
+                
+                <div id="errorUsuarios" class="alert alert-danger d-none">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <span id="errorUsuariosMessage">Erro ao consultar o Active Directory.</span>
+                </div>
+                
+                <div id="containerUsuarios" class="d-none">
+                    <div class="d-flex justify-content-between mb-3">
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary" id="btnSelecionarTodosUsuarios">
+                                <i class="bi bi-check-all me-1"></i>
+                                Selecionar Todos
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary ms-2" id="btnDesmarcarTodosUsuarios">
+                                <i class="bi bi-x-lg me-1"></i>
+                                Desmarcar Todos
+                            </button>
+                        </div>
+                        <span class="badge bg-primary" id="contadorSelecionadosUsuarios">0 selecionados</span>
+                    </div>
+                    
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="checkTodosUsuarios">
+                                        </div>
+                                    </th>
+                                    <th>Nome Completo</th>
+                                    <th>Username</th>
+                                    <th>-----</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaUsuarios">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" id="btnImportarSelecionadosUsuarios" disabled>
+                    <i class="bi bi-cloud-download me-1"></i>
+                    Importar Selecionados
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalSincronizacao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-arrow-repeat me-2"></i>
+                    Configurar Sincronização Automática
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formSincronizacao">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="sincronizacaoAtiva">
+                            <label class="form-check-label" for="sincronizacaoAtiva">
+                                <strong>Ativar Sincronização Automática</strong>
+                            </label>
+                        </div>
+                        <div class="form-text">Quando ativada, o sistema importará automaticamente novos usuários do AD</div>
+                    </div>
+                    
+                    <div id="configSincronizacao" class="d-none">
+                        <div class="mb-3">
+                            <label for="tipoSincronizacao" class="form-label">Frequência de Sincronização *</label>
+                            <select class="form-select" id="tipoSincronizacao" name="tipoSincronizacao">
+                                <option value="diario">Diário</option>
+                                <option value="semanal">Semanal</option>
+                                <option value="mensal">Mensal</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="horaSincronizacao" class="form-label">Horário *</label>
+                            <input type="time" class="form-control" id="horaSincronizacao" name="horaSincronizacao" value="02:00">
+                            <div class="form-text">Horário em que a sincronização será executada</div>
+                        </div>
+                        
+                        <div class="mb-3" id="diaSemanaContainer" style="display: none;">
+                            <label for="diaSemana" class="form-label">Dia da Semana *</label>
+                            <select class="form-select" id="diaSemana" name="diaSemana">
+                                <option value="0">Segunda-feira</option>
+                                <option value="1">Terça-feira</option>
+                                <option value="2">Quarta-feira</option>
+                                <option value="3">Quinta-feira</option>
+                                <option value="4">Sexta-feira</option>
+                                <option value="5">Sábado</option>
+                                <option value="6">Domingo</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3" id="diaMesContainer" style="display: none;">
+                            <label for="diaMes" class="form-label">Dia do Mês *</label>
+                            <select class="form-select" id="diaMes" name="diaMes">
+                                {% for i in range(1, 29) %}
+                                <option value="{{ i }}" {% if i == 1 %}selected{% endif %}>{{ i }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Dia do mês para executar a sincronização</div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            
+                        </div>
+                    </div>
+                    
+                    <div id="statusSincronizacao" class="mt-3">
+                        <h6>Status da Sincronização</h6>
+                        <div id="infoSincronizacao" class="text-muted">
+                            Carregando informações...
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-2"></i>Salvar Configuração
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let editandoUsuario = false;
+
+function editarUsuario(id, nome, username) {
+    editandoUsuario = true;
+    document.getElementById('usuarioId').value = id;
+    document.getElementById('nomeUsuario').value = nome;
+    document.getElementById('username').value = username;
+    document.getElementById('modalUsuarioTitle').textContent = 'Editar Usuário';
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalUsuario'));
+    modal.show();
+}
+
+function excluirUsuario(id, nome) {
+    if (confirmarExclusao(nome)) {
+        fetch(`/api/usuarios/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarSucesso('Usuário excluído com sucesso!');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                mostrarErro(data.error || 'Erro ao excluir usuário');
+            }
+        })
+        .catch(error => {
+            mostrarErro('Erro de conexão: ' + error.message);
+        });
+    }
+}
+
+document.getElementById('formUsuario').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = {
+        nome_usuario: formData.get('nomeUsuario'),
+        USERNAME: formData.get('username')
+    };
+    
+    const usuarioId = formData.get('usuarioId');
+    const url = editandoUsuario ? `/api/usuarios/${usuarioId}` : '/api/usuarios';
+    const method = editandoUsuario ? 'PUT' : 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const mensagem = editandoUsuario ? 'Usuário atualizado com sucesso!' : 'Usuário adicionado com sucesso!';
+            mostrarSucesso(mensagem);
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalUsuario'));
+            modal.hide();
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            mostrarErro(data.error || 'Erro ao salvar usuário');
+        }
+    })
+    .catch(error => {
+        mostrarErro('Erro de conexão: ' + error.message);
+    });
+});
+
+document.getElementById('modalUsuario').addEventListener('hidden.bs.modal', function() {
+    editandoUsuario = false;
+    document.getElementById('formUsuario').reset();
+    document.getElementById('modalUsuarioTitle').textContent = 'Novo Usuário';
+    document.getElementById('usuarioId').value = '';
+});
+
+document.getElementById('modalImportarUsuarios').addEventListener('show.bs.modal', function (e) {
+    carregarUsuarios();
+});
+
+function carregarUsuarios() {
+    const containerUsuarios = document.getElementById('containerUsuarios');
+    const loadingUsuarios = document.getElementById('loadingUsuarios');
+    const errorUsuarios = document.getElementById('errorUsuarios');
+    const listaUsuarios = document.getElementById('listaUsuarios');
+    const btnImportarSelecionadosUsuarios = document.getElementById('btnImportarSelecionadosUsuarios');
+    const contadorSelecionadosUsuarios = document.getElementById('contadorSelecionadosUsuarios');
+    
+    containerUsuarios.classList.add('d-none');
+    errorUsuarios.classList.add('d-none');
+    loadingUsuarios.classList.remove('d-none');
+    btnImportarSelecionadosUsuarios.disabled = true;
+    
+    fetch('/api/ad/usuarios')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Falha ao obter usuários do AD');
+            }
+            return response.json();
+        })
+        .then(data => {
+            loadingUsuarios.classList.add('d-none');
+            
+            if (data.success && data.usuarios && data.usuarios.length > 0) {
+                listaUsuarios.innerHTML = '';
+                
+                data.usuarios.forEach((usuario, index) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>
+                            <div class="form-check">
+                                <input class="form-check-input usuario-check" type="checkbox" value="${index}" checked>
+                            </div>
+                        </td>
+                        <td>${usuario.nome_completo}</td>
+                        <td><code>${usuario.username}</code></td>
+                        <td>${usuario.email || '-'}</td>
+                    `;
+                    listaUsuarios.appendChild(tr);
+                });
+                
+                window.usuariosAD = data.usuarios;
+                atualizarContadorUsuarios();
+                containerUsuarios.classList.remove('d-none');
+                btnImportarSelecionadosUsuarios.disabled = false;
+                
+                adicionarEventosCheckboxUsuarios();
+            } else {
+                errorUsuarios.querySelector('#errorUsuariosMessage').textContent = data.error || 'Nenhum usuário encontrado no Active Directory.';
+                errorUsuarios.classList.remove('d-none');
+            }
+        })
+        .catch(error => {
+            loadingUsuarios.classList.add('d-none');
+            errorUsuarios.querySelector('#errorUsuariosMessage').textContent = error.message;
+            errorUsuarios.classList.remove('d-none');
+            console.error('Erro:', error);
+        });
+}
+
+function adicionarEventosCheckboxUsuarios() {
+    const checkTodosUsuarios = document.getElementById('checkTodosUsuarios');
+    const checkboxes = document.querySelectorAll('.usuario-check');
+    
+    checkTodosUsuarios.addEventListener('change', function() {
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        atualizarContadorUsuarios();
+    });
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            atualizarContadorUsuarios();
+            verificarTodosMarcadosUsuarios();
+        });
+    });
+    
+    document.getElementById('btnSelecionarTodosUsuarios').addEventListener('click', function() {
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        checkTodosUsuarios.checked = true;
+        atualizarContadorUsuarios();
+    });
+    
+    document.getElementById('btnDesmarcarTodosUsuarios').addEventListener('click', function() {
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        checkTodosUsuarios.checked = false;
+        atualizarContadorUsuarios();
+    });
+    
+    document.getElementById('pesquisaUsuarios').addEventListener('input', function(e) {
+        const termo = e.target.value.toLowerCase();
+        
+        checkboxes.forEach(checkbox => {
+            const tr = checkbox.closest('tr');
+            const nomeCompleto = tr.cells[1].textContent.toLowerCase();
+            const username = tr.cells[2].textContent.toLowerCase();
+            const email = tr.cells[3].textContent.toLowerCase();
+            
+            if (nomeCompleto.includes(termo) || username.includes(termo) || email.includes(termo)) {
+                tr.style.display = '';
+            } else {
+                tr.style.display = 'none';
+            }
+        });
+    });
+    
+    document.getElementById('btnImportarSelecionadosUsuarios').addEventListener('click', function() {
+        const usuariosSelecionados = [];
+        checkboxes.forEach(checkbox => {
+            if (checkbox.checked) {
+                const index = parseInt(checkbox.value);
+                usuariosSelecionados.push(window.usuariosAD[index]);
+            }
+        });
+        
+        if (usuariosSelecionados.length === 0) {
+            mostrarErro('Selecione pelo menos um usuário para importar.');
+            return;
+        }
+        
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Importando...';
+        
+        fetch('/api/ad/importar-usuarios', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ usuarios: usuariosSelecionados })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarSucesso(`${data.importados} usuários importados com sucesso!`);
+                setTimeout(() => {
+                    bootstrap.Modal.getInstance(document.getElementById('modalImportarUsuarios')).hide();
+                    location.reload();
+                }, 1500);
+            } else {
+                mostrarErro(data.error || 'Erro ao importar usuários');
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-cloud-download me-1"></i> Importar Selecionados';
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            mostrarErro('Erro ao importar usuários');
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-cloud-download me-1"></i> Importar Selecionados';
+        });
+    });
+}
+
+function verificarTodosMarcadosUsuarios() {
+    const checkTodosUsuarios = document.getElementById('checkTodosUsuarios');
+    const checkboxes = document.querySelectorAll('.usuario-check');
+    const todosMarcados = Array.from(checkboxes).every(checkbox => checkbox.checked);
+    
+    checkTodosUsuarios.checked = todosMarcados;
+}
+
+function atualizarContadorUsuarios() {
+    const checkboxes = document.querySelectorAll('.usuario-check:checked');
+    const contadorSelecionadosUsuarios = document.getElementById('contadorSelecionadosUsuarios');
+    const btnImportarSelecionadosUsuarios = document.getElementById('btnImportarSelecionadosUsuarios');
+    
+    contadorSelecionadosUsuarios.textContent = `${checkboxes.length} selecionados`;
+    btnImportarSelecionadosUsuarios.disabled = checkboxes.length === 0;
+}
+
+function abrirModalImportarUsuarios() {
+    const modal = new bootstrap.Modal(document.getElementById('modalImportarUsuarios'));
+    modal.show();
+}
+
+function abrirModalSincronizacao() {
+    carregarConfigSincronizacao();
+    const modal = new bootstrap.Modal(document.getElementById('modalSincronizacao'));
+    modal.show();
+}
+
+function carregarConfigSincronizacao() {
+    fetch('/api/sincronizacao/usuarios/config')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const config = data.config;
+                document.getElementById('sincronizacaoAtiva').checked = config.ativa;
+                document.getElementById('tipoSincronizacao').value = config.tipo || 'diario';
+                document.getElementById('horaSincronizacao').value = config.hora || '02:00';
+                document.getElementById('diaSemana').value = config.dia_semana || '0';
+                document.getElementById('diaMes').value = config.dia_mes || '1';
+                
+                toggleConfigSincronizacao();
+                atualizarStatusSincronizacao(config);
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao carregar configuração:', error);
+            document.getElementById('infoSincronizacao').innerHTML = 
+                '<span class="text-danger">Erro ao carregar configurações</span>';
+        });
+}
+
+function toggleConfigSincronizacao() {
+    const ativa = document.getElementById('sincronizacaoAtiva').checked;
+    const configDiv = document.getElementById('configSincronizacao');
+    
+    if (ativa) {
+        configDiv.classList.remove('d-none');
+        toggleTipoSincronizacao();
+    } else {
+        configDiv.classList.add('d-none');
+    }
+}
+
+function toggleTipoSincronizacao() {
+    const tipo = document.getElementById('tipoSincronizacao').value;
+    const diaSemanaContainer = document.getElementById('diaSemanaContainer');
+    const diaMesContainer = document.getElementById('diaMesContainer');
+    
+    diaSemanaContainer.style.display = tipo === 'semanal' ? 'block' : 'none';
+    diaMesContainer.style.display = tipo === 'mensal' ? 'block' : 'none';
+}
+
+function atualizarStatusSincronizacao(config) {
+    const infoDiv = document.getElementById('infoSincronizacao');
+    
+    if (!config.ativa) {
+        infoDiv.innerHTML = '<span class="text-muted">Sincronização desativada</span>';
+        return;
+    }
+    
+    let frequencia = '';
+    switch (config.tipo) {
+        case 'diario':
+            frequencia = `Diariamente às ${config.hora}`;
+            break;
+        case 'semanal':
+            const dias = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+            frequencia = `Semanalmente às ${dias[config.dia_semana]} às ${config.hora}`;
+            break;
+        case 'mensal':
+            frequencia = `Mensalmente no dia ${config.dia_mes} às ${config.hora}`;
+            break;
+    }
+    
+    let status = '<div class="text-success"><i class="bi bi-check-circle me-1"></i>Ativa</div>';
+    status += `<div class="small text-muted">${frequencia}</div>`;
+    
+    if (config.ultima_execucao) {
+        status += `<div class="small text-muted">Última execução: ${config.ultima_execucao}</div>`;
+    }
+    
+    if (config.proxima_execucao) {
+        status += `<div class="small text-info">Próxima execução: ${config.proxima_execucao}</div>`;
+    }
+    
+    infoDiv.innerHTML = status;
+}
+
+document.getElementById('sincronizacaoAtiva').addEventListener('change', toggleConfigSincronizacao);
+document.getElementById('tipoSincronizacao').addEventListener('change', toggleTipoSincronizacao);
+
+document.getElementById('formSincronizacao').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = {
+        ativa: document.getElementById('sincronizacaoAtiva').checked,
+        tipo: formData.get('tipoSincronizacao'),
+        hora: formData.get('horaSincronizacao'),
+        dia_semana: formData.get('diaSemana'),
+        dia_mes: formData.get('diaMes')
+    };
+    
+    fetch('/api/sincronizacao/usuarios/config', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            mostrarSucesso('Configuração de sincronização salva com sucesso!');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalSincronizacao'));
+            modal.hide();
+        } else {
+            mostrarErro(data.error || 'Erro ao salvar configuração');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        mostrarErro('Erro ao salvar configuração');
+    });
+});
+</script>
+{% endblock %} 
