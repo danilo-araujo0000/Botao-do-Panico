@@ -1,3 +1,5 @@
 .env
-__pycache__/
+*.env
+**/*__pycache__/
 dashboard/modules/instantclient_23_7/
+dashboard/modules/instantclient_23_7/oraociei.dll
