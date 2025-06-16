@@ -161,3 +161,32 @@ COMMENT ON TABLE dbasistemas.da_tbl_botao_log_alerta IS 'Tabela de logs de alert
 COMMENT ON TABLE dbasistemas.da_tbl_botao_log_sistema IS 'Tabela de logs de sistema "botão do pânico"';
 COMMENT ON TABLE dbasistemas.da_tbl_botao_usuario_login IS 'Tabela de usuários para autenticação do sistema "botão do pânico"';
 COMMENT ON TABLE dbasistemas.da_tbl_botao_config_ad IS 'Tabela de configurações do AD SERVER para o sistema "botão do pânico"';
+
+
+-- Criar Usuario de Acesso as tabelas
+CREATE USER bpuser IDENTIFIED BY bpuser;
+GRANT CONNECT TO bpuser;
+
+GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_sala TO bpuser;
+GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_usuario TO bpuser;
+GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_receptor TO bpuser;
+GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_log_alerta TO bpuser;
+GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_log_sistema TO bpuser;
+GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_usuario_login TO bpuser;
+GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_config_ad TO bpuser;
+GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_sinc_user TO bpuser;
+GRANT SELECT, ALTER ON dbasistemas.seq_botao_config_ad TO bpuser;
+GRANT SELECT, ALTER ON dbasistemas.seq_botao_sala TO bpuser;
+GRANT SELECT, ALTER ON dbasistemas.seq_botao_usuario TO bpuser;
+GRANT SELECT, ALTER ON dbasistemas.seq_botao_receptor TO bpuser;
+GRANT SELECT, ALTER ON dbasistemas.seq_botao_log_alerta TO bpuser;
+GRANT SELECT, ALTER ON dbasistemas.seq_botao_log_sistema TO bpuser;
+GRANT SELECT, ALTER ON dbasistemas.seq_botao_usuario_login TO bpuser;
+GRANT SELECT, ALTER ON dbasistemas.seq_botao_config_ad TO bpuser;
+
+
+
+
+
+
+
