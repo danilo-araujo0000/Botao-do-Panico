@@ -10,11 +10,11 @@ icon_path = 'data/icons/client.png'
 
 # Dados adicionais para incluir no executável
 added_files = [
-    ('data/icons/client.png'),
+    ('data/icons/client.png', 'data/icons'),
 ]
 
 # Verificar se existe diretório de sons
-sounds_dir = 'sounds'
+sounds_dir = 'data/sounds'
 if os.path.exists(sounds_dir):
     added_files.append((sounds_dir, 'sounds'))
 
