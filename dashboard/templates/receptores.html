@@ -20,7 +20,7 @@
                 <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-search"></i></span>
                     <input type="text" class="form-control" id="pesquisaReceptores" 
-                           placeholder="Pesquisar por IP, nome ou setor..." 
+                           placeholder="Pesquisar por IP/hostname, nome ou setor..." 
                            onkeyup="pesquisarReceptores()">
                 </div>
             </div>
@@ -53,7 +53,7 @@
                 <thead class="table-light">
                     <tr>
                         <th width="80">ID</th>
-                        <th width="150">IP do Receptor</th>
+                        <th width="150">IP/Hostname do Receptor</th>
                         <th width="150">Nome</th>
                         <th width="120">Setor</th>
                         <th width="100">Status</th>
@@ -70,7 +70,7 @@
                                    value="{{ receptor.ip_receptor }}" 
                                    oninput="marcarAlteradoReceptor({{ receptor.id }})"
                                    data-field="ip_receptor"
-                                   pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$">
+                                   placeholder="IP ou hostname.dominio">
                         </td>
                         <td>
                             <input type="text" class="form-control form-control-sm" 
@@ -243,10 +243,10 @@ function adicionarNovoReceptor() {
         <td><span class="badge bg-info">NOVO</span></td>
         <td>
             <input type="text" class="form-control form-control-sm" 
-                   placeholder="172.19.0.0"
+                   placeholder="172.19.0.0 ou hostname.dominio"
                    onblur="salvarNovoReceptor(this.parentElement.parentElement)"
                    data-field="ip_receptor" 
-                   pattern="^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$" required>
+                   required>
         </td>
         <td>
             <input type="text" class="form-control form-control-sm" 
@@ -296,15 +296,29 @@ function cancelarNovoReceptor(linha) {
     }
 }
 
-function validarIP(ip) {
-    const regex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
-    if (!regex.test(ip)) return false;
+function validarIPouHostname(valor) {
+    if (!valor || valor.trim() === '') return false;
     
-    const parts = ip.split('.');
-    return parts.every(part => {
-        const num = parseInt(part, 10);
-        return num >= 0 && num <= 255;
-    });
+    valor = valor.trim();
+    
+    // Validar se é um IP
+    const regexIP = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+    if (regexIP.test(valor)) {
+        const parts = valor.split('.');
+        return parts.every(part => {
+            const num = parseInt(part, 10);
+            return num >= 0 && num <= 255;
+        });
+    }
+    
+    // Validar se é um hostname (formato hostname.dominio)
+    const regexHostname = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
+    if (regexHostname.test(valor)) {
+        // Verificar se tem pelo menos um ponto (hostname.dominio)
+        return valor.includes('.');
+    }
+    
+    return false;
 }
 
 function salvarNovoReceptor(linha) {
@@ -317,7 +331,7 @@ function salvarNovoReceptor(linha) {
         const value = input.value.trim();
         
         if (field === 'ip_receptor') {
-            if (!value || !validarIP(value)) {
+            if (!value || !validarIPouHostname(value)) {
                 temDadosObrigatorios = false;
                 input.classList.add('is-invalid');
             } else {
@@ -331,7 +345,7 @@ function salvarNovoReceptor(linha) {
     });
     
     if (!temDadosObrigatorios) {
-        mostrarErro('IP do receptor é obrigatório e deve ser válido');
+        mostrarErro('IP ou hostname do receptor é obrigatório e deve ser válido');
         return;
     }
     
@@ -368,7 +382,7 @@ function salvarReceptor(id, linha) {
         const value = input.value.trim();
         
         if (field === 'ip_receptor') {
-            if (!validarIP(value)) {
+            if (!validarIPouHostname(value)) {
                 ipValido = false;
                 input.classList.add('is-invalid');
             } else {
@@ -380,7 +394,7 @@ function salvarReceptor(id, linha) {
     });
     
     if (!ipValido) {
-        mostrarErro('IP do receptor deve ser válido');
+        mostrarErro('IP ou hostname do receptor deve ser válido');
         return;
     }
     
@@ -503,7 +517,7 @@ function excluirReceptor(id, ip) {
 }
 
 function instalarReceptor(ip, id) {
-    if (confirm(`Deseja instalar o receptor no IP ${ip}?`)) {
+    if (confirm(`Deseja instalar o receptor no endereço ${ip}?`)) {
         const botao = event.target.closest('button');
         const textoOriginal = botao.innerHTML;
         
@@ -587,7 +601,7 @@ function verificarReceptor(ip, id) {
 document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('input', function(e) {
         if (e.target.matches('input[data-field="ip_receptor"]')) {
-            if (validarIP(e.target.value.trim())) {
+            if (validarIPouHostname(e.target.value.trim())) {
                 e.target.classList.remove('is-invalid');
             }
         }

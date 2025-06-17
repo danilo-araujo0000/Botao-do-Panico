@@ -14,8 +14,10 @@ chave = "alerta5656"
 
 
 def enviar_mensagem():
+    global usuario_windows
+    
     hostname = socket.gethostname()
-    usuario_windows = getpass.getuser()
+    usuario_windows = getpass.getuser().upper()
     mostrar_tela_enviado()
     
     mensagem = {
@@ -81,4 +83,5 @@ def mostrar_tela_erro():
 
 if __name__ == "__main__":
      enviar_mensagem()
+     print(f"usuario_windows: {usuario_windows}")
      

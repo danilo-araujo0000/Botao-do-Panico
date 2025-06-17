@@ -1078,7 +1078,7 @@ def instalar_receptor():
     if not ip_receptor:
         return jsonify({
             'success': False,
-            'error': 'IP do receptor é obrigatório'
+            'error': 'IP ou hostname do receptor é obrigatório'
         }), 400
     
     if not path_receptor:
@@ -1146,7 +1146,7 @@ def verificar_receptor():
     if not ip_receptor:
         return jsonify({
             'success': False,
-            'error': 'IP do receptor é obrigatório'
+            'error': 'IP ou hostname do receptor é obrigatório'
         }), 400
     
     credenciais = obter_credenciais_ad()
@@ -1202,7 +1202,7 @@ def testar_conexao_receptor():
     if not ip_receptor:
         return jsonify({
             'success': False,
-            'error': 'IP do receptor é obrigatório'
+            'error': 'IP ou hostname do receptor é obrigatório'
         }), 400
     
     try:
