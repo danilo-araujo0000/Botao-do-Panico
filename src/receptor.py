@@ -62,8 +62,21 @@ class Tela:
         self.master = master
         self.som_tocando = True 
         self.mixer_inicializado = False
+        self.tempo_restante = 15
         
         self.master.title("Tela de Alerta")
+        
+       
+        largura_tela = self.master.winfo_screenwidth()
+        altura_tela = self.master.winfo_screenheight()
+        
+        fator_largura = largura_tela / 1920
+        fator_altura = altura_tela / 1080
+        fator_escala = min(fator_largura, fator_altura)
+        
+        fator_escala = max(0.5, min(fator_escala, 2.0))
+        
+        self.tela_pequena = largura_tela < 1024 or altura_tela < 768
         
         self.master.attributes('-fullscreen', True)
         
@@ -74,47 +87,66 @@ class Tela:
         self.master.focus_force()
         self.master.bind("<FocusOut>", self.manter_foco)
         
-        botao_fonte = tkfont.Font(family="Arial", size=28, weight="bold")
-        icone_fonte = tkfont.Font(family="Arial", size=120, weight="bold")
-        texto_fonte = tkfont.Font(family="Arial", size=48, weight="bold")
-        sala_fonte = tkfont.Font(family="Helvetica", size=52, weight="bold")
-        local_fonte = tkfont.Font(family="Helvetica", size=45, weight="bold")
+        botao_fonte = tkfont.Font(family="Arial", size=int(28 * fator_escala), weight="bold")
+        icone_fonte = tkfont.Font(family="Arial", size=int(120 * fator_escala), weight="bold")
+        texto_fonte = tkfont.Font(family="Arial", size=int(48 * fator_escala), weight="bold")
+        sala_fonte = tkfont.Font(family="Helvetica", size=int(52 * fator_escala), weight="bold")
+        local_fonte = tkfont.Font(family="Helvetica", size=int(45 * fator_escala), weight="bold")
+        cronometro_fonte = tkfont.Font(family="Arial", size=int(36 * fator_escala), weight="bold")
+        nome_usuario_fonte = tkfont.Font(family="Arial", size=int(36 * fator_escala), weight="bold")
+        
+        self.padding_top = int(20 * fator_escala)
+        self.padding_medio = int(10 * fator_escala)
+        self.padding_pequeno = int(5 * fator_escala)
+        self.padding_botao = int(50 * fator_escala)
         
         self.frame = tk.Frame(self.master, bg="#B22222")
         self.frame.pack(expand=True, fill="both")
 
+        self.cronometro_label = tk.Label(self.frame, text=f"Fechando em: {self.tempo_restante}s", 
+                                        font=cronometro_fonte, fg="#FFD700", bg="#B22222")
+        self.cronometro_label.pack(pady=(self.padding_top, self.padding_medio))
+
         self.icone_alerta = tk.Label(self.frame, text="⚠", font=icone_fonte, fg="#FFD700", bg="#B22222")
-        self.icone_alerta.pack(pady=(50, 20))
+        self.icone_alerta.pack(pady=(self.padding_top, self.padding_top))
 
-        self.texto_aviso = tk.Label(self.frame, text="ATENÇÃO!\n\nCODIGO VIOLETA!\n\n", 
+        if self.tela_pequena:
+            texto_alerta = "ATENÇÃO!\nCÓDIGO VIOLETA!"
+        else:
+            texto_alerta = "ATENÇÃO!\n\nCODIGO VIOLETA!\n\n"
+            
+        self.texto_aviso = tk.Label(self.frame, text=texto_alerta, 
                                     font=texto_fonte, fg="white", bg="#B22222", justify="center")
-        self.texto_aviso.pack(pady=(0, 10))
+        self.texto_aviso.pack(pady=(0, self.padding_medio))
 
-        self.texto_sala = tk.Label(self.frame, text=f"LOCAL:  {sala.upper()} ", 
-                                   font=local_fonte, fg="#000000", bg="#B22222", anchor="w")
-        self.texto_sala.pack(pady=(0, 30))
+        self.texto_sala = tk.Label(self.frame, text=f"LOCAL: {sala.upper()}", 
+                                   font=local_fonte, fg="#000000", bg="#B22222", anchor="center")
+        self.texto_sala.pack(pady=(0, self.padding_medio if self.tela_pequena else int(30 * fator_escala)))
         
-        self.nome_usuario_fonte = tkfont.Font(family="Arial", size=36, weight="bold")
-        self.nome_usuario_label = tk.Label(self.frame, text=f"Nome do Usuário: {usuario}", 
-                                           font=self.nome_usuario_fonte, fg="white", bg="#B22222")
-        self.nome_usuario_label.pack(pady=(0, 5))
+        texto_usuario = f"Usuário: {usuario}" if self.tela_pequena else f"Nome do Usuário: {usuario}"
+        self.nome_usuario_label = tk.Label(self.frame, text=texto_usuario, 
+                                           font=nome_usuario_fonte, fg="white", bg="#B22222")
+        self.nome_usuario_label.pack(pady=(0, self.padding_pequeno))
  
         botao_frame = tk.Frame(self.frame, bg="#B22222")
-        botao_frame.pack(side="bottom", pady=(0, 50))
+        botao_frame.pack(side="bottom", pady=(0, self.padding_botao))
 
         self.botao = tk.Button(botao_frame, text="AGUARDE...", font=botao_fonte,
                                bg="#666666", fg="white", activebackground="#666666",
                                activeforeground="white", relief=tk.FLAT,
-                               command=self.tentar_fechar, padx=30, pady=15,
+                               command=self.tentar_fechar, 
+                               padx=int(30 * fator_escala), pady=int(15 * fator_escala),
                                state="disabled")
         self.botao.pack()
         
+        label_fonte = tkfont.Font(family="Arial", size=int(18 * fator_escala))
         self.label = tk.Label(self.frame, text="", 
-                             font=("Arial", 18), bg="#B22222", fg="white")
-        self.label.pack(pady=30)
+                             font=label_fonte, bg="#B22222", fg="white")
+        self.label.pack(pady=int(30 * fator_escala))
 
         self.piscar_contador = 0
         self.piscar()
+        self.iniciar_cronometro()
 
         threading.Thread(target=self.tocar_som_inicial, daemon=True).start()
 
@@ -123,6 +155,7 @@ class Tela:
             cor_atual = self.frame.cget("background")
             nova_cor = "#CD5C5C" if cor_atual == "#B22222" else "#B22222"
             self.frame.configure(background=nova_cor)
+            self.cronometro_label.configure(bg=nova_cor)
             self.icone_alerta.configure(bg=nova_cor)
             self.texto_aviso.configure(bg=nova_cor)
             self.texto_sala.configure(bg=nova_cor)
@@ -130,6 +163,20 @@ class Tela:
             self.label.configure(bg=nova_cor)
             self.piscar_contador += 1
             self.master.after(500, self.piscar)
+
+    def iniciar_cronometro(self):
+        """Inicia o cronômetro regressivo de 15 segundos"""
+        self.atualizar_cronometro()
+
+    def atualizar_cronometro(self):
+        """Atualiza o cronômetro e fecha a janela quando chegar a 0"""
+        if self.tempo_restante > 0:
+            self.cronometro_label.config(text=f"Fechando em: {self.tempo_restante}s")
+            self.tempo_restante -= 1
+            self.master.after(1000, self.atualizar_cronometro)
+        else:
+            self.cronometro_label.config(text="Fechando...")
+            self.fechar_aplicacao()
 
     def habilitar_botao_fechar(self):
         """Habilita o botão fechar após o som terminar"""
@@ -196,6 +243,7 @@ def abrir_tela(sala, usuario):
     
     thread_janela = threading.Thread(target=criar_janela, daemon=True)
     thread_janela.start()
+    time.sleep(15)
 
 if __name__ == "__main__":
     print("Iniciando servidor receptor...")

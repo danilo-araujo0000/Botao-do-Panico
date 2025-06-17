@@ -80,7 +80,7 @@ def check_health():
 def enviar_alerta(nome_usuario, nome_sala):
     salvar_logs_sitema(f"Enviando alerta do usuário {nome_usuario} da sala {nome_sala} - {id_evento}")
     
-    lista_receptores = localizar_receptores()
+    lista_receptores =  localizar_receptores()
     print(f"Lista de receptores: {lista_receptores}")
     
     if not lista_receptores:
@@ -120,7 +120,7 @@ def enviar_para_receptor(ip_receptor, nome_usuario, nome_sala):
         print(f"Enviando para receptor: {ip_receptor}")
         
         response = requests.post(
-            f"http://{ip_receptor}:9090/alerta5656/enviar", 
+            f"http://{ip_receptor}:9090/alerta5656/enviar",  
             json={"sala": nome_sala, "usuario": nome_usuario, "codigo": "alerta5656"},
             timeout=4
         )
