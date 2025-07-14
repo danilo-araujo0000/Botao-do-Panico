@@ -1,3 +1,4 @@
+import json
 import threading
 import time
 from datetime import datetime, timedelta
@@ -229,3 +230,42 @@ def atualizar_agendamento_sincronizacao():
                     parar_scheduler()
     except Exception as e:
         inserir_log_sistema(f"Erro ao atualizar agendamento: {str(e)}", "ERROR", "SYNC") 
+        
+#função para guardar em um arquivo os hostnames que estao no Banco de Dados
+def guardar_hostnames_no_arquivo():
+    try:
+        inserir_log_sistema("Iniciando guardar hostnames no arquivo", "INFO", "HOSTNAMES")
+        conn = conectar_banco_de_dados()
+        if not conn:
+            inserir_log_sistema("Falha ao conectar ao banco de dados", "ERROR", "HOSTNAMES")
+            return False
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT hostname, nome_sala FROM {DATABASE_SCHEMA}.da_tbl_botao_sala")
+        hostnames = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        hostnames_dict = {row[0]: row[1] for row in hostnames}
+        
+        with open('hostnames.json', 'w', encoding='utf-8') as file:
+            json.dump(hostnames_dict, file, indent=4, ensure_ascii=False)
+        inserir_log_sistema(f"Hostnames guardados: {len(hostnames_dict)} registros", "INFO", "HOSTNAMES")
+        return True
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        inserir_log_sistema(f"Erro ao guardar hostnames: {str(e)}", "ERROR", "HOSTNAMES")
+        return False
+
+def scheduler_hostnames_loop():
+    inserir_log_sistema("Loop do scheduler de hostnames iniciado", "INFO", "HOSTNAMES")
+    while True:
+        guardar_hostnames_no_arquivo()
+        tempo_em_horas = 4
+        tempo_em_segundos = tempo_em_horas * 3600
+        time.sleep(tempo_em_segundos)
+
+def iniciar_scheduler_hostnames():
+    inserir_log_sistema("Scheduler de hostnames iniciado", "INFO", "HOSTNAMES")
+    threading.Thread(target=scheduler_hostnames_loop, daemon=True).start()
+

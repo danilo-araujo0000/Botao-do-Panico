@@ -80,7 +80,11 @@ def check_health():
 def enviar_alerta(nome_usuario, nome_sala):
     salvar_logs_sitema(f"Enviando alerta do usuário {nome_usuario} da sala {nome_sala} - {id_evento}")
     
+<<<<<<< HEAD
     lista_receptores =  localizar_receptores()
+=======
+    lista_receptores = ['172.19.200.1']
+>>>>>>> a7c00e3 (ajustando seleção no banco de dados com hostnames maisculos e minusculos)
     print(f"Lista de receptores: {lista_receptores}")
     
     if not lista_receptores:
@@ -256,17 +260,26 @@ def localizar_usuario(usuario):
 def localizar_sala(hostname):
     conn = conectar_banco_de_dados()
     if conn:
+        query = f"SELECT nome_sala FROM {database_schema}.da_tbl_botao_sala WHERE hostname = :hostname"
         try:
             cursor = conn.cursor()
-            cursor.execute(f"SELECT nome_sala FROM {database_schema}.da_tbl_botao_sala WHERE hostname = :hostname", {'hostname': hostname})
+            cursor.execute(query, {'hostname': hostname.lower()})
             result = cursor.fetchone()
-            cursor.close()
-            conn.close()
             if result:
+                print(f"[AVISO] Sala encontrada com hostname em minusculo: {hostname.lower()} - {result[0]}")
                 return result[0]
             else:
-                print(f"[AVISO] Sala não encontrada: {hostname}")
-                return "sala Não Encontrada"
+                if hostname.upper() == hostname:
+                    cursor = conn.cursor()
+                    cursor.execute(query, {'hostname': hostname.upper()})
+                    result = cursor.fetchone()
+                    if result:
+                        print(f"[AVISO] Sala encontrada com hostname em maiusculo: {hostname.upper()}")
+                        return result[0]
+                    else:
+                        return "sala Não Encontrada"
+                else:
+                    return "sala Não Encontrada"
         except Exception as e:
             print(f"[ERRO] Falha ao localizar sala {hostname}: {str(e)}")
             if conn:

@@ -9,7 +9,7 @@ import socket
 
 
 
-server = "172.19.0.76"
+server = "172.19.200.1"
 chave = "alerta5656"
 
 
