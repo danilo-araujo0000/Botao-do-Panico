@@ -80,11 +80,7 @@ def check_health():
 def enviar_alerta(nome_usuario, nome_sala):
     salvar_logs_sitema(f"Enviando alerta do usuário {nome_usuario} da sala {nome_sala} - {id_evento}")
     
-<<<<<<< HEAD
     lista_receptores =  localizar_receptores()
-=======
-    lista_receptores = ['172.19.200.1']
->>>>>>> a7c00e3 (ajustando seleção no banco de dados com hostnames maisculos e minusculos)
     print(f"Lista de receptores: {lista_receptores}")
     
     if not lista_receptores:

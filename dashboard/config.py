@@ -4,9 +4,20 @@ import hashlib
 import base64
 from cryptography.fernet import Fernet
 
-path_exe_botao  = r"C:\py\BASE\botao\dist\botao_de_enviar.exe"
+DEFAULT_PATH_EXE_BOTAO = r"C:\py\BASE\botao\dist\botao_de_enviar.exe"
+
+
+def _normalizar_caminho_env(valor, padrao):
+    if not valor:
+        return padrao
+    return os.path.normpath(valor.replace('\x08', '\\b'))
 
 dotenv.load_dotenv()
+PATH_EXE_BOTAO = _normalizar_caminho_env(
+    os.getenv('PATH_EXE_BOTAO') or os.getenv('path_exe_botao'),
+    DEFAULT_PATH_EXE_BOTAO
+)
+path_exe_botao = PATH_EXE_BOTAO
 dns_server = os.getenv('DNS_SERVER')
 if dns_server is None:
     dns_server = "172.19.0.10"

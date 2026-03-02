@@ -5,14 +5,9 @@ from modules.database import conectar_banco_de_dados, obter_proximo_id, DATABASE
 from modules.logging_utils import inserir_log_sistema
 from modules.ad_integration import consultar_hostnames_ad, consultar_usuarios_ad
 from modules.smb_utils import *
-import os
-import dotenv
 import requests
 from requests.exceptions import RequestException, ConnectTimeout, ConnectionError
-dotenv.load_dotenv()
-
-path_exe_botao  = os.getenv('PATH_EXE_BOTAO')
-dns_server = os.getenv('DNS_SERVER')
+from config import PATH_EXE_BOTAO
 path_receptor =r"C:\py\BASE\botao\dist\BotaoPanico_Receptor.exe"
 
 api_bp = Blueprint('api', __name__)
@@ -568,96 +563,79 @@ def importar_hostnames():
 @login_required
 def copiar_arquivo():
     data = request.get_json()
-    hostname = data.get('hostname')
+    hostname = (data.get('hostname') or '').strip()
     
     if not hostname:
         return jsonify({
             'success': False,
-            'error': 'Hostname é obrigatório'
-        }), 400
-    
-    ip_destino = resolver_ip_hostname(hostname, dns_server)
-    if not ip_destino:
-        registrar_log_copia(hostname, None, path_exe_botao, 'ERRO', 'Falha na resolução DNS')
-        return jsonify({
-            'success': False,
-            'error': f'Não foi possível resolver o IP do hostname {hostname}'
+            'error': 'Hostname ? obrigat?rio'
         }), 400
     
     credenciais = obter_credenciais_ad()
     if not credenciais:
-        registrar_log_copia(hostname, ip_destino, path_exe_botao, 'ERRO', 'Credenciais AD não encontradas')
+        registrar_log_copia(hostname, hostname, PATH_EXE_BOTAO, 'ERRO', 'Credenciais AD n?o encontradas')
         return jsonify({
             'success': False,
-            'error': 'Credenciais do Active Directory não configuradas'
+            'error': 'Credenciais do Active Directory n?o configuradas'
         }), 400
     
-    sucesso = copiar_arquivo_smb(ip_destino, path_exe_botao, credenciais)
+    sucesso = copiar_arquivo_smb(hostname, PATH_EXE_BOTAO, credenciais)
     
     if sucesso:
-        registrar_log_copia(hostname, ip_destino, path_exe_botao, 'SUCESSO', 'Arquivo copiado com sucesso')
-        inserir_log_sistema(f"Arquivo copiado para {hostname} ({ip_destino})", "INFO", "SMB_COPY")
+        registrar_log_copia(hostname, hostname, PATH_EXE_BOTAO, 'SUCESSO', 'Arquivo copiado com sucesso')
+        inserir_log_sistema(f"Arquivo copiado para {hostname}", "INFO", "SMB_COPY")
         return jsonify({
             'success': True,
-            'message': f'Arquivo copiado com sucesso para {hostname} ({ip_destino})'
+            'message': f'Arquivo copiado com sucesso para {hostname}'
         })
     else:
-        registrar_log_copia(hostname, ip_destino, path_exe_botao, 'ERRO', 'Falha na cópia SMB')
+        registrar_log_copia(hostname, hostname, PATH_EXE_BOTAO, 'ERRO', 'Falha na c?pia SMB')
         return jsonify({
             'success': False,
-            'error': f'Falha ao copiar arquivo para {hostname} ({ip_destino})'
+            'error': f'Falha ao copiar arquivo para {hostname}'
         }), 500
 
 @api_bp.route('/api/verificar-arquivo', methods=['POST'])
 @login_required
 def verificar_arquivo():
     data = request.get_json()
-    hostname = data.get('hostname')
+    hostname = (data.get('hostname') or '').strip()
     
     if not hostname:
         return jsonify({
             'success': False,
-            'error': 'Hostname é obrigatório'
-        }), 400
-    
-    ip_destino = resolver_ip_hostname(hostname, dns_server)
-    if not ip_destino:
-        return jsonify({
-            'success': False,
-            'error': f'Não foi possível resolver o IP do hostname {hostname}'
+            'error': 'Hostname ? obrigat?rio'
         }), 400
     
     credenciais = obter_credenciais_ad()
     if not credenciais:
         return jsonify({
             'success': False,
-            'error': 'Credenciais do Active Directory não configuradas'
+            'error': 'Credenciais do Active Directory n?o configuradas'
         }), 400
     
-    resultado = verificar_arquivo_multiplos_nomes(ip_destino, credenciais)
+    resultado = verificar_arquivo_multiplos_nomes(hostname, credenciais)
     
     if resultado.get('existe'):
         nome_encontrado = resultado.get('nome_encontrado', 'arquivo')
-        inserir_log_sistema(f"Arquivo verificado em {hostname} ({ip_destino}) - {nome_encontrado}: {resultado['tamanho']} bytes", "INFO", "SMB_CHECK")
+        inserir_log_sistema(f"Arquivo verificado em {hostname} - {nome_encontrado}: {resultado['tamanho']} bytes", "INFO", "SMB_CHECK")
         return jsonify({
             'success': True,
             'existe': True,
             'nome_arquivo': nome_encontrado,
             'tamanho': resultado['tamanho'],
             'data_verificacao': resultado['data_verificacao'],
-            'hostname': hostname,
-            'ip': ip_destino
+            'hostname': hostname
         })
     else:
         nomes_testados = resultado.get('nomes_testados', [])
-        inserir_log_sistema(f"Arquivo não encontrado em {hostname} ({ip_destino}) - Testados: {', '.join(nomes_testados)}", "WARNING", "SMB_CHECK")
+        inserir_log_sistema(f"Arquivo n?o encontrado em {hostname} - Testados: {', '.join(nomes_testados)}", "WARNING", "SMB_CHECK")
         return jsonify({
             'success': True,
             'existe': False,
-            'erro': resultado.get('erro', 'Arquivo não encontrado'),
+            'erro': resultado.get('erro', 'Arquivo n?o encontrado'),
             'nomes_testados': nomes_testados,
-            'hostname': hostname,
-            'ip': ip_destino
+            'hostname': hostname
         }) 
 
 @api_bp.route('/api/ad/usuarios')
@@ -897,66 +875,52 @@ def salvar_config_sincronizacao():
 @login_required
 def testar_credenciais():
     data = request.get_json()
-    hostname = data.get('hostname')
+    hostname = (data.get('hostname') or '').strip()
     
     if not hostname:
         return jsonify({
             'success': False,
-            'error': 'Hostname é obrigatório'
-        }), 400
-    
-    ip_destino = resolver_ip_hostname(hostname, dns_server)
-    if not ip_destino:
-        return jsonify({
-            'success': False,
-            'error': f'Não foi possível resolver o IP do hostname {hostname}'
+            'error': 'Hostname ? obrigat?rio'
         }), 400
     
     credenciais = obter_credenciais_ad()
     if not credenciais:
         return jsonify({
             'success': False,
-            'error': 'Credenciais do Active Directory não configuradas'
+            'error': 'Credenciais do Active Directory n?o configuradas'
         }), 400
     
-    sucesso, mensagem = testar_credenciais_smb(ip_destino, credenciais)
+    sucesso, mensagem = testar_credenciais_smb(hostname, credenciais)
     
     if sucesso:
         return jsonify({
             'success': True,
-            'message': f'Credenciais válidas para {hostname} ({ip_destino}): {mensagem}',
-            'hostname': hostname,
-            'ip': ip_destino
+            'message': f'Credenciais v?lidas para {hostname}: {mensagem}',
+            'hostname': hostname
         })
     else:
         return jsonify({
             'success': False,
-            'error': f'Falha na autenticação para {hostname} ({ip_destino}): {mensagem}',
-            'hostname': hostname,
-            'ip': ip_destino
+            'error': f'Falha na autentica??o para {hostname}: {mensagem}',
+            'hostname': hostname
         }), 401 
 
 @api_bp.route('/api/debug/verificar-arquivo', methods=['POST'])
 @login_required
 def debug_verificar_arquivo():
     data = request.get_json()
-    hostname = data.get('hostname')
+    hostname = (data.get('hostname') or '').strip()
     
     if not hostname:
-        return jsonify({'error': 'Hostname é obrigatório'}), 400
-    
-    ip_destino = resolver_ip_hostname(hostname, dns_server)
-    if not ip_destino:
-        return jsonify({'error': f'Não foi possível resolver o IP do hostname {hostname}'}), 400
+        return jsonify({'error': 'Hostname ? obrigat?rio'}), 400
     
     credenciais = obter_credenciais_ad()
     if not credenciais:
-        return jsonify({'error': 'Credenciais do Active Directory não configuradas'}), 400
+        return jsonify({'error': 'Credenciais do Active Directory n?o configuradas'}), 400
     
-
     nomes_possiveis = [
         "botao_de_enviar.exe",
-        "Botão do Panico.exe", 
+        "Bot?o do Panico.exe", 
         "Botao do Panico.exe",
         "botao_panico.exe",
         "BotaoPanico.exe"
@@ -964,7 +928,7 @@ def debug_verificar_arquivo():
     
     resultados = []
     for nome in nomes_possiveis:
-        resultado = verificar_arquivo_smb(ip_destino, nome, credenciais)
+        resultado = verificar_arquivo_smb(hostname, nome, credenciais)
         resultados.append({
             'nome': nome,
             'existe': resultado.get('existe', False),
@@ -974,7 +938,6 @@ def debug_verificar_arquivo():
     
     return jsonify({
         'hostname': hostname,
-        'ip': ip_destino,
         'resultados': resultados
     }) 
 
@@ -984,20 +947,14 @@ def teste_arquivo_simples():
     data = request.get_json()
     hostname = data.get('hostname', 'PainelSTI')
     
-    ip_destino = resolver_ip_hostname(hostname, dns_server)
-    if not ip_destino:
-        return jsonify({'error': f'Não foi possível resolver o IP do hostname {hostname}'}), 400
-    
     credenciais = obter_credenciais_ad()
     if not credenciais:
-        return jsonify({'error': 'Credenciais do Active Directory não configuradas'}), 400
+        return jsonify({'error': 'Credenciais do Active Directory n?o configuradas'}), 400
     
-
-    resultado = verificar_arquivo_smb(ip_destino, "botao_de_enviar.exe", credenciais)
+    resultado = verificar_arquivo_smb(hostname, "botao_de_enviar.exe", credenciais)
     
     return jsonify({
         'hostname': hostname,
-        'ip': ip_destino,
         'arquivo_testado': 'botao_de_enviar.exe',
         'resultado': resultado
     }) 
