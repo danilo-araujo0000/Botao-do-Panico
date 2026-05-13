@@ -251,12 +251,25 @@ extract_instant_client() {
     resolve_oracle_zip
     local zip_file="$ORACLE_ZIP_PATH"
 
-    require_command unzip
-
     log "Extraindo Instant Client de $(basename "$zip_file")"
     local temp_dir
     temp_dir="$(mktemp -d)"
-    unzip -oq "$zip_file" -d "$temp_dir"
+
+    if command -v unzip >/dev/null 2>&1; then
+        unzip -oq "$zip_file" -d "$temp_dir"
+    elif command -v python3 >/dev/null 2>&1; then
+        python3 - <<PY
+import zipfile
+
+zip_path = r"""$zip_file"""
+target_dir = r"""$temp_dir"""
+
+with zipfile.ZipFile(zip_path) as zf:
+    zf.extractall(target_dir)
+PY
+    else
+        fail "Nao foi encontrado um extrator de ZIP. Instale unzip ou python3."
+    fi
 
     local extracted_dir
     extracted_dir="$(find "$temp_dir" -maxdepth 1 -mindepth 1 -type d -name 'instantclient_*' | head -n 1 || true)"
