@@ -62,7 +62,7 @@ class Tela:
         self.master = master
         self.som_tocando = True 
         self.mixer_inicializado = False
-        self.tempo_restante = 15
+        self.tempo_restante = 90
         
         self.master.title("Tela de Alerta")
         
@@ -243,7 +243,7 @@ def abrir_tela(sala, usuario):
     
     thread_janela = threading.Thread(target=criar_janela, daemon=True)
     thread_janela.start()
-    time.sleep(15)
+    time.sleep(90)
 
 if __name__ == "__main__":
     print("Iniciando servidor receptor...")

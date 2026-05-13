@@ -296,7 +296,11 @@ def localizar_receptores():
     if conn:
         try:
             cursor = conn.cursor()
-            cursor.execute(f"SELECT ip_receptor FROM {database_schema}.da_tbl_botao_receptor")
+            cursor.execute(f"""
+                SELECT ip_receptor
+                FROM {database_schema}.da_tbl_botao_receptor
+                WHERE NVL(ativo, 1) = 1
+            """)
             result = cursor.fetchall()
             cursor.close()
             conn.close()

@@ -12,6 +12,7 @@ services:
       - ./dashboard/.env
     environment:
       ORACLE_CLIENT_LIB_DIR: /opt/oracle/instantclient
+      LD_LIBRARY_PATH: /opt/oracle/instantclient
       PATH_EXE_BOTAO: /app/dist/botao_de_enviar.exe
       PATH_RECEPTOR: /app/dist/BotaoPanico_Receptor.exe
       DASHBOARD_PORT: 3303
@@ -20,7 +21,7 @@ services:
       - "3303:3303"
     volumes:
       - ./dist:/app/dist:ro
-      - ./docker/oracle/instantclient:/opt/oracle/instantclient:ro
+      - ${ORACLE_CLIENT_HOST_DIR:-./docker/oracle/instantclient}:/opt/oracle/instantclient:ro
       - ./dashboard/hostnames.json:/app/dashboard/hostnames.json
 
   alert_server:
@@ -36,8 +37,9 @@ services:
       - ./src/.env
     environment:
       ORACLE_CLIENT_LIB_DIR: /opt/oracle/instantclient
+      LD_LIBRARY_PATH: /opt/oracle/instantclient
       SERVER_PORT: 9600
     ports:
       - "9600:9600"
     volumes:
-      - ./docker/oracle/instantclient:/opt/oracle/instantclient:ro
+      - ${ORACLE_CLIENT_HOST_DIR:-./docker/oracle/instantclient}:/opt/oracle/instantclient:ro

@@ -47,6 +47,7 @@ CREATE TABLE dbasistemas.da_tbl_botao_receptor (
     id NUMBER(10) NOT NULL,
     ip_receptor VARCHAR2(15) NOT NULL,
     nome_receptor VARCHAR2(100),
+    ativo NUMBER(1) DEFAULT 1 NOT NULL,
     status_receptor VARCHAR2(100) DEFAULT 'Não Instalado',
     setor VARCHAR2(100),
     data_criacao DATE DEFAULT SYSDATE,

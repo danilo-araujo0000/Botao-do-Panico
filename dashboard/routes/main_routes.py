@@ -33,6 +33,12 @@ def inicio():
         cursor.execute(f"SELECT COUNT(*) as total FROM {DATABASE_SCHEMA}.da_tbl_botao_receptor")
         total_receptores = cursor.fetchone()[0]
         
+        cursor.execute(f"SELECT COUNT(*) as total FROM {DATABASE_SCHEMA}.da_tbl_botao_receptor WHERE NVL(ativo, 1) = 1")
+        total_receptores_ativos = cursor.fetchone()[0]
+        
+        cursor.execute(f"SELECT COUNT(*) as total FROM {DATABASE_SCHEMA}.da_tbl_botao_receptor WHERE NVL(ativo, 1) = 0")
+        total_receptores_inativos = cursor.fetchone()[0]
+        
         cursor.execute(f"""
             SELECT * FROM (
                 SELECT nome_sala, nome_usuario, data_hora, id_evento,
@@ -80,6 +86,8 @@ def inicio():
                              total_salas=total_salas,
                              total_usuarios=total_usuarios,
                              total_receptores=total_receptores,
+                             total_receptores_ativos=total_receptores_ativos,
+                             total_receptores_inativos=total_receptores_inativos,
                              ultimos_acionamentos=ultimos_acionamentos,
                              ultimos_logs=ultimos_logs,
                              status_servidor=status_servidor)
@@ -167,7 +175,11 @@ def receptores():
     
     try:
         cursor = conn.cursor()
-        cursor.execute(f"SELECT id, ip_receptor, nome_receptor, setor, status_receptor FROM {DATABASE_SCHEMA}.da_tbl_botao_receptor ORDER BY ip_receptor")
+        cursor.execute(f"""
+            SELECT id, ip_receptor, nome_receptor, setor, status_receptor, NVL(ativo, 1) as ativo
+            FROM {DATABASE_SCHEMA}.da_tbl_botao_receptor
+            ORDER BY ip_receptor
+        """)
         receptores_raw = cursor.fetchall()
         
         receptores_list = []
@@ -177,7 +189,8 @@ def receptores():
                 'ip_receptor': row[1],
                 'nome_receptor': row[2],
                 'setor': row[3],
-                'status_receptor': row[4] if row[4] else 'Não verificado'
+                'status_receptor': row[4] if row[4] else 'Não verificado',
+                'ativo': bool(row[5])
             })
         
         cursor.close()

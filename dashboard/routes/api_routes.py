@@ -238,13 +238,14 @@ def adicionar_receptor():
     cursor = conn.cursor()
     try:
         cursor.execute(f"""
-            INSERT INTO {DATABASE_SCHEMA}.da_tbl_botao_receptor (id, ip_receptor, nome_receptor, setor) 
-            VALUES (:id, :ip_receptor, :nome_receptor, :setor)
+            INSERT INTO {DATABASE_SCHEMA}.da_tbl_botao_receptor (id, ip_receptor, nome_receptor, setor, ativo) 
+            VALUES (:id, :ip_receptor, :nome_receptor, :setor, :ativo)
         """, {
             'id': novo_id,
             'ip_receptor': data['ip_receptor'], 
             'nome_receptor': data.get('nome_receptor', ''), 
-            'setor': data.get('setor', '')
+            'setor': data.get('setor', ''),
+            'ativo': 1
         })
         conn.commit()
         return jsonify({'success': True, 'id': novo_id})
@@ -269,12 +270,14 @@ def editar_receptor(receptor_id):
     try:
         cursor.execute(f"""
             UPDATE {DATABASE_SCHEMA}.da_tbl_botao_receptor 
-            SET ip_receptor = :ip_receptor, nome_receptor = :nome_receptor, setor = :setor 
+            SET ip_receptor = :ip_receptor, nome_receptor = :nome_receptor, setor = :setor,
+                data_atualizacao = :data_atualizacao
             WHERE id = :id
         """, {
             'ip_receptor': data['ip_receptor'], 
             'nome_receptor': data.get('nome_receptor', ''), 
             'setor': data.get('setor', ''), 
+            'data_atualizacao': datetime.now(),
             'id': receptor_id
         })
         conn.commit()
@@ -299,6 +302,49 @@ def deletar_receptor(receptor_id):
         cursor.execute(f"DELETE FROM {DATABASE_SCHEMA}.da_tbl_botao_receptor WHERE id = :id", {'id': receptor_id})
         conn.commit()
         return jsonify({'success': True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 400
+    finally:
+        cursor.close()
+        if conn:
+            conn.close()
+
+@api_bp.route('/api/receptores/<int:receptor_id>/ativo', methods=['PUT'])
+@login_required
+def atualizar_status_ativo_receptor(receptor_id):
+    data = request.get_json() or {}
+    ativo = data.get('ativo')
+
+    if ativo is None:
+        return jsonify({'error': 'Campo ativo é obrigatório'}), 400
+
+    ativo_valor = 1 if bool(ativo) else 0
+
+    conn = conectar_banco_de_dados()
+    if not conn:
+        return jsonify({'error': 'Erro ao conectar com o banco'}), 500
+
+    cursor = conn.cursor()
+    try:
+        cursor.execute(f"""
+            UPDATE {DATABASE_SCHEMA}.da_tbl_botao_receptor
+            SET ativo = :ativo, data_atualizacao = :data_atualizacao
+            WHERE id = :id
+        """, {
+            'ativo': ativo_valor,
+            'data_atualizacao': datetime.now(),
+            'id': receptor_id
+        })
+
+        if cursor.rowcount == 0:
+            conn.rollback()
+            return jsonify({'error': 'Receptor não encontrado'}), 404
+
+        conn.commit()
+        status_texto = 'ativado' if ativo_valor == 1 else 'desativado'
+        inserir_log_sistema(f"Receptor {receptor_id} {status_texto}", "INFO", "CRUD_RECEPTOR")
+        return jsonify({'success': True, 'ativo': ativo_valor})
     except Exception as e:
         conn.rollback()
         return jsonify({'error': str(e)}), 400

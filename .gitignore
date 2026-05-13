@@ -35,3 +35,7 @@ data/CACHE/
 dashboard/hostnames.json
 nssm.exe
 *.log
+docker/oracle/instantclient/*
+!docker/oracle/instantclient/.gitkeep
+docker/oracle/packages/*
+!docker/oracle/packages/.gitkeep

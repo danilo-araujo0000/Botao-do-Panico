@@ -49,6 +49,20 @@ def descriptografar_credenciais(senha_criptografada):
         inserir_log_sistema(f"Erro ao descriptografar credenciais: {str(e)}")
         return None
 
+def normalizar_hostname_destino(hostname_destino, credenciais=None):
+    hostname_destino = (hostname_destino or '').strip()
+    if not hostname_destino or '.' in hostname_destino:
+        return hostname_destino
+    
+    dominio = ''
+    if credenciais:
+        dominio = (credenciais.get('dominio') or '').strip().strip('.')
+    
+    if dominio and '.' in dominio:
+        return f"{hostname_destino}.{dominio}"
+    
+    return hostname_destino
+
 def obter_credenciais_ad():
     conn = conectar_banco_de_dados()
     if not conn:
@@ -79,8 +93,9 @@ def obter_credenciais_ad():
         return None
 
 def copiar_arquivo_smb(hostname_destino, arquivo_local, credenciais):
+    hostname_smb = normalizar_hostname_destino(hostname_destino, credenciais)
     try:
-        connection = Connection(uuid.uuid4(), hostname_destino, 445)
+        connection = Connection(uuid.uuid4(), hostname_smb, 445)
         connection.connect()
         
         username_formats = [
@@ -106,11 +121,11 @@ def copiar_arquivo_smb(hostname_destino, arquivo_local, credenciais):
         if not session:
             raise Exception(f"Falha na autenticação SMB com todos os formatos de usuário. Último erro: {last_error}")
         
-        tree = TreeConnect(session, f"\\\\{hostname_destino}\\C$")
+        tree = TreeConnect(session, f"\\\\{hostname_smb}\\C$")
         tree.connect()
         
         nome_arquivo = os.path.basename(arquivo_local)
-        caminho_destino = f"Users\\Public\\Desktop\\{nome_arquivo}"
+        caminho_destino = "Users\\Public\\Desktop\\Botao do Panico.exe"
         
         file_open = Open(tree, caminho_destino)
         file_open.create(
@@ -158,10 +173,11 @@ def copiar_arquivo_smb(hostname_destino, arquivo_local, credenciais):
         return False
 
 def verificar_arquivo_smb(hostname_destino, nome_arquivo, credenciais):
+    hostname_smb = normalizar_hostname_destino(hostname_destino, credenciais)
     try:
         inserir_log_sistema(f"Iniciando verificação de arquivo: {nome_arquivo} em {hostname_destino}", "DEBUG", "SMB")
         
-        connection = Connection(uuid.uuid4(), hostname_destino, 445)
+        connection = Connection(uuid.uuid4(), hostname_smb, 445)
         connection.connect()
         inserir_log_sistema(f"Conexão SMB estabelecida com {hostname_destino}", "DEBUG", "SMB")
         
@@ -188,7 +204,7 @@ def verificar_arquivo_smb(hostname_destino, nome_arquivo, credenciais):
         if not session:
             raise Exception(f"Falha na autenticação SMB: {last_error}")
         
-        tree = TreeConnect(session, f"\\\\{hostname_destino}\\C$")
+        tree = TreeConnect(session, f"\\\\{hostname_smb}\\C$")
         tree.connect()
         inserir_log_sistema(f"Conectado ao compartilhamento C$ em {hostname_destino}", "DEBUG", "SMB")
         
@@ -251,8 +267,9 @@ def registrar_log_copia(hostname, hostname_destino, arquivo, status, detalhes=No
         return False
 
 def testar_credenciais_smb(hostname_destino, credenciais):
+    hostname_smb = normalizar_hostname_destino(hostname_destino, credenciais)
     try:
-        connection = Connection(uuid.uuid4(), hostname_destino, 445)
+        connection = Connection(uuid.uuid4(), hostname_smb, 445)
         connection.connect()
         
         username_formats = [
@@ -266,7 +283,7 @@ def testar_credenciais_smb(hostname_destino, credenciais):
                 session = Session(connection, username, credenciais['senha'])
                 session.connect()
                 
-                tree = TreeConnect(session, f"\\\\{hostname_destino}\\C$")
+                tree = TreeConnect(session, f"\\\\{hostname_smb}\\C$")
                 tree.connect()
                 tree.disconnect()
                 
@@ -288,8 +305,8 @@ def testar_credenciais_smb(hostname_destino, credenciais):
 def verificar_arquivo_multiplos_nomes(hostname_destino, credenciais):
     nomes_possiveis = [
         "botao_de_enviar.exe",
-        "Botão do Panico.exe", 
         "Botao do Panico.exe",
+        "Botão do Panico.exe",
         "botao_panico.exe",
         "BotaoPanico.exe"
     ]
@@ -315,10 +332,11 @@ def verificar_arquivo_multiplos_nomes(hostname_destino, credenciais):
     }
 
 def verificar_arquivo_simples(hostname_destino, nome_arquivo, credenciais):
+    hostname_smb = normalizar_hostname_destino(hostname_destino, credenciais)
     try:
         inserir_log_sistema(f"[DEBUG] Iniciando verificação simples: {nome_arquivo} em {hostname_destino}", "INFO", "SMB")
         
-        connection = Connection(uuid.uuid4(), hostname_destino, 445)
+        connection = Connection(uuid.uuid4(), hostname_smb, 445)
         connection.connect()
         inserir_log_sistema(f"[DEBUG] Conexão estabelecida com {hostname_destino}", "INFO", "SMB")
         
@@ -346,7 +364,7 @@ def verificar_arquivo_simples(hostname_destino, nome_arquivo, credenciais):
         if not session:
             raise Exception(f"Falha na autenticação SMB com todos os formatos. Último erro: {last_error}")
         
-        tree = TreeConnect(session, f"\\\\{hostname_destino}\\C$")
+        tree = TreeConnect(session, f"\\\\{hostname_smb}\\C$")
         tree.connect()
         inserir_log_sistema(f"[DEBUG] Conectado ao compartilhamento C$", "INFO", "SMB")
         
@@ -391,8 +409,9 @@ def verificar_arquivo_simples(hostname_destino, nome_arquivo, credenciais):
         return {'existe': False, 'erro': str(e)}
 
 def copiar_receptor_smb(hostname_destino, arquivo_local, credenciais):
+    hostname_smb = normalizar_hostname_destino(hostname_destino, credenciais)
     try:
-        connection = Connection(uuid.uuid4(), hostname_destino, 445)
+        connection = Connection(uuid.uuid4(), hostname_smb, 445)
         connection.connect()
         
         username_formats = [
@@ -418,7 +437,7 @@ def copiar_receptor_smb(hostname_destino, arquivo_local, credenciais):
         if not session:
             raise Exception(f"Falha na autenticação SMB com todos os formatos de usuário. Último erro: {last_error}")
         
-        tree = TreeConnect(session, f"\\\\{hostname_destino}\\C$")
+        tree = TreeConnect(session, f"\\\\{hostname_smb}\\C$")
         tree.connect()
         
         nome_arquivo = os.path.basename(arquivo_local)
@@ -471,6 +490,7 @@ def copiar_receptor_smb(hostname_destino, arquivo_local, credenciais):
 
 def verificar_receptor_smb(hostname_destino, credenciais):
     nome_arquivo = "BotaoPanico_Receptor.exe"
+    hostname_smb = normalizar_hostname_destino(hostname_destino, credenciais)
     
     caminhos_possiveis = [
         f"ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{nome_arquivo}",
@@ -483,7 +503,7 @@ def verificar_receptor_smb(hostname_destino, credenciais):
     try:
         inserir_log_sistema(f"Iniciando verificação de receptor: {nome_arquivo} em {hostname_destino}", "DEBUG", "SMB")
         
-        connection = Connection(uuid.uuid4(), hostname_destino, 445)
+        connection = Connection(uuid.uuid4(), hostname_smb, 445)
         connection.connect()
         inserir_log_sistema(f"Conexão SMB estabelecida com {hostname_destino}", "DEBUG", "SMB")
         
@@ -510,7 +530,7 @@ def verificar_receptor_smb(hostname_destino, credenciais):
         if not session:
             raise Exception(f"Falha na autenticação SMB: {last_error}")
         
-        tree = TreeConnect(session, f"\\\\{hostname_destino}\\C$")
+        tree = TreeConnect(session, f"\\\\{hostname_smb}\\C$")
         tree.connect()
         inserir_log_sistema(f"Conectado ao compartilhamento C$ em {hostname_destino}", "DEBUG", "SMB")
         
@@ -559,3 +579,4 @@ def verificar_receptor_smb(hostname_destino, credenciais):
     except Exception as e:
         inserir_log_sistema(f"Erro geral ao verificar receptor {nome_arquivo} em {hostname_destino}: {str(e)}", "ERROR", "SMB")
         return {'existe': False, 'erro': str(e)}
+
