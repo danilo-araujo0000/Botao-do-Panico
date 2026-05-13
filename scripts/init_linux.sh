@@ -12,18 +12,80 @@ ORACLE_PACKAGES_DIR="$ROOT_DIR/docker/oracle/packages"
 DEFAULT_ORACLE_ZIP_URL="https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-basic-linux.x64-23.26.0.0.0.zip"
 ORACLE_ZIP_URL="${ORACLE_ZIP_URL:-$DEFAULT_ORACLE_ZIP_URL}"
 ORACLE_ZIP_PATH="${ORACLE_ZIP_PATH:-}"
+REUSE_ENV_ONLY=0
+
+if [[ -t 1 ]]; then
+    COLOR_RESET=$'\033[0m'
+    COLOR_RED=$'\033[31m'
+    COLOR_GREEN=$'\033[32m'
+    COLOR_YELLOW=$'\033[33m'
+    COLOR_BLUE=$'\033[34m'
+    COLOR_CYAN=$'\033[36m'
+    COLOR_BOLD=$'\033[1m'
+else
+    COLOR_RESET=''
+    COLOR_RED=''
+    COLOR_GREEN=''
+    COLOR_YELLOW=''
+    COLOR_BLUE=''
+    COLOR_CYAN=''
+    COLOR_BOLD=''
+fi
+
+print_section() {
+    printf '\n%s%s%s\n' "$COLOR_BOLD" "$1" "$COLOR_RESET"
+}
 
 log() {
-    printf '[init] %s\n' "$1"
+    printf '%s[init]%s %s\n' "$COLOR_GREEN" "$COLOR_RESET" "$1"
 }
 
 fail() {
-    printf '[init][erro] %s\n' "$1" >&2
+    printf '%s[init][erro]%s %s\n' "$COLOR_RED" "$COLOR_RESET" "$1" >&2
     exit 1
 }
 
 require_command() {
     command -v "$1" >/dev/null 2>&1 || fail "Comando obrigatorio nao encontrado: $1"
+}
+
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --reuse-env)
+                REUSE_ENV_ONLY=1
+                shift
+                ;;
+            --oracle-zip)
+                [[ $# -ge 2 ]] || fail "Uso: --oracle-zip /caminho/arquivo.zip"
+                ORACLE_ZIP_PATH="$2"
+                shift 2
+                ;;
+            --oracle-url)
+                [[ $# -ge 2 ]] || fail "Uso: --oracle-url https://..."
+                ORACLE_ZIP_URL="$2"
+                shift 2
+                ;;
+            -h|--help)
+                cat <<'EOF'
+Uso:
+  ./scripts/init_linux.sh
+  ./scripts/init_linux.sh --reuse-env
+  ./scripts/init_linux.sh --oracle-zip /caminho/instantclient.zip
+  ./scripts/init_linux.sh --oracle-url https://download.oracle.com/...zip
+
+Opcoes:
+  --reuse-env    Reutiliza dashboard/.env e src/.env sem novos prompts.
+  --oracle-zip   Usa um arquivo ZIP local do Oracle Instant Client.
+  --oracle-url   Sobrescreve a URL padrao de download do Instant Client.
+EOF
+                exit 0
+                ;;
+            *)
+                fail "Argumento nao reconhecido: $1"
+                ;;
+        esac
+    done
 }
 
 prompt_yes_no() {
@@ -32,7 +94,7 @@ prompt_yes_no() {
     local default_value="${3:-s}"
     local answer=""
 
-    read -r -p "$prompt_text [${default_value}/n]: " answer
+    read -r -p "${COLOR_YELLOW}${prompt_text}${COLOR_RESET} [${default_value}/n]: " answer
     answer="${answer:-$default_value}"
     answer="$(printf '%s' "$answer" | tr '[:upper:]' '[:lower:]')"
 
@@ -63,20 +125,20 @@ prompt_value() {
     fi
 
     if [[ -n "$help_text" ]]; then
-        printf '\n%s\n' "$help_text"
+        printf '\n%s%s%s\n' "$COLOR_CYAN" "$help_text" "$COLOR_RESET"
     fi
     if [[ -n "$example_value" ]]; then
-        printf 'Exemplo: %s\n' "$example_value"
+        printf '%sExemplo:%s %s\n' "$COLOR_BLUE" "$COLOR_RESET" "$example_value"
     fi
 
     local answer=""
     if [[ -n "$effective_default" ]]; then
-        read -r -p "$prompt_text [$effective_default]: " answer
+        read -r -p "${COLOR_YELLOW}${prompt_text}${COLOR_RESET} [$effective_default]: " answer
         if [[ -z "$answer" ]]; then
             answer="$effective_default"
         fi
     else
-        read -r -p "$prompt_text: " answer
+        read -r -p "${COLOR_YELLOW}${prompt_text}${COLOR_RESET}: " answer
     fi
 
     printf -v "$var_name" '%s' "$answer"
@@ -91,20 +153,20 @@ prompt_secret() {
     local answer=""
 
     if [[ -n "$help_text" ]]; then
-        printf '\n%s\n' "$help_text"
+        printf '\n%s%s%s\n' "$COLOR_CYAN" "$help_text" "$COLOR_RESET"
     fi
     if [[ -n "$example_value" ]]; then
-        printf 'Exemplo: %s\n' "$example_value"
+        printf '%sExemplo:%s %s\n' "$COLOR_BLUE" "$COLOR_RESET" "$example_value"
     fi
 
     if [[ -n "$current_value" ]]; then
-        read -r -s -p "$prompt_text [manter atual]: " answer
+        read -r -s -p "${COLOR_YELLOW}${prompt_text}${COLOR_RESET} [manter atual]: " answer
         printf '\n'
         if [[ -z "$answer" ]]; then
             answer="$current_value"
         fi
     else
-        read -r -s -p "$prompt_text: " answer
+        read -r -s -p "${COLOR_YELLOW}${prompt_text}${COLOR_RESET}: " answer
         printf '\n'
     fi
 
@@ -149,8 +211,8 @@ resolve_oracle_zip() {
     local_zip="$(find "$ORACLE_PACKAGES_DIR" -maxdepth 1 -type f -name 'instantclient-basic-linux*.zip' | head -n 1 || true)"
 
     if [[ -n "$local_zip" ]]; then
-        printf '\nPacote Oracle Instant Client encontrado localmente.\n'
-        printf 'Arquivo: %s\n' "$local_zip"
+        print_section "Pacote Oracle Instant Client encontrado localmente"
+        printf '%sArquivo:%s %s\n' "$COLOR_BLUE" "$COLOR_RESET" "$local_zip"
         prompt_yes_no USE_LOCAL_ZIP "Deseja usar o ZIP local existente?" "s"
         if [[ "$USE_LOCAL_ZIP" == "s" ]]; then
             ORACLE_ZIP_PATH="$local_zip"
@@ -158,8 +220,9 @@ resolve_oracle_zip() {
         fi
     fi
 
-    printf '\nO Instant Client Linux e necessario para conectar neste Oracle 11g em thick mode.\n'
-    printf 'URL padrao de download: %s\n' "$ORACLE_ZIP_URL"
+    print_section "Oracle Instant Client"
+    printf '%sO Instant Client Linux e necessario para conectar neste Oracle 11g em thick mode.%s\n' "$COLOR_CYAN" "$COLOR_RESET"
+    printf '%sURL padrao de download:%s %s\n' "$COLOR_BLUE" "$COLOR_RESET" "$ORACLE_ZIP_URL"
     prompt_yes_no DOWNLOAD_ORACLE_ZIP "Deseja baixar o ZIP oficial automaticamente agora?" "s"
 
     if [[ "$DOWNLOAD_ORACLE_ZIP" == "s" ]]; then
@@ -247,11 +310,31 @@ bootstrap_files() {
 }
 
 test_oracle_connection() {
-    log "Testando conexao Oracle no container alert_server"
-    docker compose exec -T alert_server python - <<'PY'
+    log "Testando conexao Oracle antes de subir os servicos"
+    docker compose run --rm -T alert_server python - <<'PY'
 import os
 import sys
+import traceback
 import oracledb
+
+def hint_for_error(message):
+    message_upper = message.upper()
+
+    if "DPI-1047" in message_upper:
+        return "O Instant Client nao foi carregado corretamente. Verifique docker/oracle/instantclient e as bibliotecas .so."
+    if "DPY-3010" in message_upper:
+        return "Este Oracle exige thick mode. Verifique se o Instant Client foi inicializado."
+    if "ORA-01017" in message_upper:
+        return "Usuario ou senha invalidos no Oracle."
+    if "ORA-12154" in message_upper:
+        return "Service name/alias nao resolvido. Verifique DATABASE_SERVICE."
+    if "ORA-12514" in message_upper:
+        return "Listener nao reconhece o servico. Verifique DATABASE_SERVICE."
+    if "ORA-12541" in message_upper:
+        return "Nao foi possivel conectar ao listener. Verifique host, porta e firewall."
+    if "ORA-12170" in message_upper or "TIMED OUT" in message_upper:
+        return "Timeout de rede. Verifique conectividade entre o host Linux e o Oracle."
+    return "Revise DATABASE_HOST, DATABASE_PORT, DATABASE_SERVICE, DATABASE_USER, PASSWORD e o Instant Client."
 
 try:
     lib_dir = os.getenv("ORACLE_CLIENT_LIB_DIR")
@@ -276,8 +359,12 @@ try:
     cur.close()
     conn.close()
 except Exception as exc:
-    print(f"Falha na conexao Oracle: {exc}", file=sys.stderr)
-    raise
+    message = str(exc)
+    print("Falha na conexao Oracle.", file=sys.stderr)
+    print(f"Erro original: {message}", file=sys.stderr)
+    print(f"Dica: {hint_for_error(message)}", file=sys.stderr)
+    traceback.print_exc(limit=1, file=sys.stderr)
+    raise SystemExit(1)
 PY
 }
 
@@ -296,14 +383,41 @@ load_existing_values() {
     fi
 }
 
-main() {
-    require_command docker
-    docker compose version >/dev/null 2>&1 || fail "docker compose nao esta disponivel"
+env_files_exist() {
+    [[ -f "$DASHBOARD_ENV" && -f "$SERVER_ENV" ]]
+}
 
-    load_existing_values
-
+collect_configuration() {
     local default_secret
     default_secret="$(generate_secret_key)"
+
+    if [[ "$REUSE_ENV_ONLY" -eq 1 ]]; then
+        env_files_exist || fail "Nao foi possivel usar --reuse-env porque dashboard/.env ou src/.env nao existem"
+        print_section "Reutilizando configuracao existente"
+        printf '%sUsando valores atuais de dashboard/.env e src/.env sem novos prompts.%s\n' "$COLOR_CYAN" "$COLOR_RESET"
+        [[ -n "${DATABASE_HOST:-}" ]] || fail "DATABASE_HOST nao encontrado no .env atual"
+        [[ -n "${DATABASE_USER:-}" ]] || fail "DATABASE_USER nao encontrado no .env atual"
+        [[ -n "${PASSWORD:-}" ]] || fail "PASSWORD nao encontrado no .env atual"
+        [[ -n "${DATABASE_SERVICE:-}" ]] || fail "DATABASE_SERVICE nao encontrado no .env atual"
+        [[ -n "${DATABASE_SCHEMA:-}" ]] || fail "DATABASE_SCHEMA nao encontrado no .env atual"
+        [[ -n "${SECRET_KEY:-}" ]] || fail "SECRET_KEY nao encontrado no .env atual"
+        return
+    fi
+
+    if env_files_exist; then
+        print_section "Configuracao existente encontrada"
+        printf '%sJa existem arquivos dashboard/.env e src/.env.%s\n' "$COLOR_CYAN" "$COLOR_RESET"
+        prompt_yes_no REUSE_CURRENT_ENV "Deseja reutilizar a configuracao atual sem preencher tudo de novo?" "s"
+        if [[ "$REUSE_CURRENT_ENV" == "s" ]]; then
+            [[ -n "${DATABASE_HOST:-}" ]] || fail "DATABASE_HOST nao encontrado no .env atual"
+            [[ -n "${DATABASE_USER:-}" ]] || fail "DATABASE_USER nao encontrado no .env atual"
+            [[ -n "${PASSWORD:-}" ]] || fail "PASSWORD nao encontrado no .env atual"
+            [[ -n "${DATABASE_SERVICE:-}" ]] || fail "DATABASE_SERVICE nao encontrado no .env atual"
+            [[ -n "${DATABASE_SCHEMA:-}" ]] || fail "DATABASE_SCHEMA nao encontrado no .env atual"
+            [[ -n "${SECRET_KEY:-}" ]] || fail "SECRET_KEY nao encontrado no .env atual"
+            return
+        fi
+    fi
 
     prompt_value DATABASE_HOST \
         "Oracle host" \
@@ -381,10 +495,19 @@ main() {
         "Chave secreta do Flask usada para sessao e criptografia de configuracoes do dashboard." \
         "troque-por-uma-chave-secreta-longa-e-unica" \
         "${SECRET_KEY:-$default_secret}"
+}
 
-    printf '\nConfiguracao do Oracle Instant Client\n'
-    printf 'O script pode usar um ZIP local em docker/oracle/packages ou baixar automaticamente da Oracle.\n'
-    printf 'URL padrao atual: %s\n' "$ORACLE_ZIP_URL"
+main() {
+    parse_args "$@"
+    require_command docker
+    docker compose version >/dev/null 2>&1 || fail "docker compose nao esta disponivel"
+
+    load_existing_values
+    collect_configuration
+
+    print_section "Configuracao do Oracle Instant Client"
+    printf '%sO script pode usar um ZIP local em docker/oracle/packages ou baixar automaticamente da Oracle.%s\n' "$COLOR_CYAN" "$COLOR_RESET"
+    printf '%sURL padrao atual:%s %s\n' "$COLOR_BLUE" "$COLOR_RESET" "$ORACLE_ZIP_URL"
 
     [[ -n "$DATABASE_HOST" ]] || fail "DATABASE_HOST obrigatorio"
     [[ -n "$DATABASE_USER" ]] || fail "DATABASE_USER obrigatorio"
@@ -397,14 +520,16 @@ main() {
     extract_instant_client
     write_env_files
 
+    log "Construindo imagem do alert_server para validacao inicial"
+    docker compose build alert_server >/dev/null
+    test_oracle_connection
+
     log "Subindo containers"
     docker compose up -d --build
 
-    test_oracle_connection
-
     log "Ambiente inicializado"
-    printf 'Dashboard: http://localhost:%s\n' "$DASHBOARD_PORT"
-    printf 'Alert server: http://localhost:%s/check-health\n' "$SERVER_PORT"
+    printf '%sDashboard:%s http://localhost:%s\n' "$COLOR_GREEN" "$COLOR_RESET" "$DASHBOARD_PORT"
+    printf '%sAlert server:%s http://localhost:%s/check-health\n' "$COLOR_GREEN" "$COLOR_RESET" "$SERVER_PORT"
 }
 
 main "$@"
