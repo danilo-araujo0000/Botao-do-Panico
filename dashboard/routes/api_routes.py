@@ -7,8 +7,9 @@ from modules.ad_integration import consultar_hostnames_ad, consultar_usuarios_ad
 from modules.smb_utils import *
 import requests
 from requests.exceptions import RequestException, ConnectTimeout, ConnectionError
-from config import PATH_EXE_BOTAO
-path_receptor =r"C:\py\BASE\botao\dist\BotaoPanico_Receptor.exe"
+from config import PATH_EXE_BOTAO, PATH_RECEPTOR
+
+path_receptor = PATH_RECEPTOR
 
 api_bp = Blueprint('api', __name__)
 

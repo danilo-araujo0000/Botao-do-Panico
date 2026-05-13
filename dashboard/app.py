@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from flask import Flask
-from config import SECRET_KEY, SESSION_COOKIE_SECURE
+from config import SECRET_KEY, SESSION_COOKIE_SECURE, DASHBOARD_PORT
 from routes.auth_routes import auth_bp
 from routes.main_routes import main_bp
 from routes.api_routes import api_bp
@@ -27,4 +27,4 @@ except Exception as e:
     inserir_log_sistema(f"Erro ao iniciar scheduler de sincronização: {e}", "ERROR", "SCHEDULER")
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=3303, use_reloader=False, debug=False)
+    app.run(host='0.0.0.0', port=DASHBOARD_PORT, use_reloader=False, debug=False)

@@ -16,7 +16,7 @@
 <div class="card mb-3">
     <div class="card-body py-2">
         <div class="row align-items-center">
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="input-group">
                     <span class="input-group-text"><i class="bi bi-search"></i></span>
                     <input type="text" class="form-control" id="pesquisaReceptores" 
@@ -30,6 +30,13 @@
                     <option value="nome_receptor">Ordenar por Nome</option>
                     <option value="setor">Ordenar por Setor</option>
                     <option value="id">Ordenar por ID</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="filtroAtivoReceptores" onchange="pesquisarReceptores()">
+                    <option value="todos">Todos</option>
+                    <option value="ativos">Somente ativos</option>
+                    <option value="inativos">Somente inativos</option>
                 </select>
             </div>
             <div class="col-md-3">
@@ -56,21 +63,22 @@
                         <th width="150">IP/Hostname do Receptor</th>
                         <th width="150">Nome</th>
                         <th width="120">Setor</th>
+                        <th width="110">Situação</th>
                         <th width="100">Status</th>
                         <th width="100">Conexão</th>
-                        <th width="250">Ações</th>
+                        <th width="280">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for receptor in receptores %}
-                    <tr data-id="{{ receptor.id }}">
+                    <tr data-id="{{ receptor.id }}" data-ativo="{{ 1 if receptor.ativo else 0 }}" class="{% if not receptor.ativo %}table-secondary{% endif %}">
                         <td><span class="badge bg-secondary">{{ receptor.id }}</span></td>
                         <td>
                             <input type="text" class="form-control form-control-sm" 
                                    value="{{ receptor.ip_receptor }}" 
                                    oninput="marcarAlteradoReceptor({{ receptor.id }})"
                                    data-field="ip_receptor"
-                                   placeholder="IP ou hostname.dominio">
+                                   placeholder="IP, hostname ou hostname.dominio">
                         </td>
                         <td>
                             <input type="text" class="form-control form-control-sm" 
@@ -83,6 +91,15 @@
                                    value="{{ receptor.setor or '' }}" 
                                    oninput="marcarAlteradoReceptor({{ receptor.id }})"
                                    data-field="setor">
+                        </td>
+                        <td>
+                            <span class="badge {% if receptor.ativo %}bg-success{% else %}bg-secondary{% endif %}" id="ativo-receptor-{{ receptor.id }}">
+                                {% if receptor.ativo %}
+                                    <i class="bi bi-toggle-on"></i> Ativo
+                                {% else %}
+                                    <i class="bi bi-toggle-off"></i> Inativo
+                                {% endif %}
+                            </span>
                         </td>
                         <td>
                             {% set status = receptor.status_receptor or 'Não verificado' %}
@@ -105,9 +122,15 @@
                             {% endif %}
                         </td>
                         <td>
-                            <span class="badge bg-warning" id="ping-status-{{ receptor.id }}">
-                                <i class="bi bi-clock"></i> Testando...
-                            </span>
+                            {% if receptor.ativo %}
+                                <span class="badge bg-warning" id="ping-status-{{ receptor.id }}">
+                                    <i class="bi bi-clock"></i> Testando...
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary" id="ping-status-{{ receptor.id }}">
+                                    <i class="bi bi-pause-circle"></i> Ignorado
+                                </span>
+                            {% endif %}
                         </td>
                         <td>
                             <div class="btn-group" role="group">
@@ -119,18 +142,26 @@
                                                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-success" 
                                         onclick="testarConexaoReceptor('{{ receptor.ip_receptor }}', {{ receptor.id }})"
-                                        title="Testar conexão">
+                                        title="Testar conexão"
+                                        {% if not receptor.ativo %}disabled{% endif %}>
                                     <i class="bi bi-wifi"></i>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-primary" 
                                         onclick="instalarReceptor('{{ receptor.ip_receptor }}', {{ receptor.id }})"
-                                        title="Instalar Receptor">
+                                        title="Instalar Receptor"
+                                        {% if not receptor.ativo %}disabled{% endif %}>
                                     <i class="bi bi-download"></i>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-info" 
                                         onclick="verificarReceptor('{{ receptor.ip_receptor }}', {{ receptor.id }})"
-                                        title="Verificar Instalação">
+                                        title="Verificar Instalação"
+                                        {% if not receptor.ativo %}disabled{% endif %}>
                                     <i class="bi bi-search"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm {% if receptor.ativo %}btn-outline-warning{% else %}btn-outline-success{% endif %}"
+                                        onclick="alternarReceptorAtivo({{ receptor.id }}, {{ 'false' if receptor.ativo else 'true' }})"
+                                        title="{% if receptor.ativo %}Desativar receptor{% else %}Ativar receptor{% endif %}">
+                                    <i class="bi {% if receptor.ativo %}bi-pause-circle{% else %}bi-play-circle{% endif %}"></i>
                                 </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger" 
                                         onclick="excluirReceptor({{ receptor.id }}, '{{ receptor.ip_receptor }}')">
@@ -174,6 +205,7 @@ function marcarAlteradoReceptor(id) {
 function pesquisarReceptores() {
     const input = document.getElementById('pesquisaReceptores');
     const filter = input.value.toLowerCase();
+    const filtroAtivo = document.getElementById('filtroAtivoReceptores').value;
     const tbody = document.querySelector('#tabelaReceptores tbody');
     const rows = tbody.getElementsByTagName('tr');
 
@@ -193,7 +225,13 @@ function pesquisarReceptores() {
             }
         }
 
-        row.style.display = found ? '' : 'none';
+        const ativo = row.getAttribute('data-ativo') === '1';
+        const statusCompativel =
+            filtroAtivo === 'todos' ||
+            (filtroAtivo === 'ativos' && ativo) ||
+            (filtroAtivo === 'inativos' && !ativo);
+
+        row.style.display = found && statusCompativel ? '' : 'none';
     }
 }
 
@@ -228,7 +266,9 @@ function ordenarTabelaReceptores() {
 
 document.addEventListener('DOMContentLoaded', function() {
     {% for receptor in receptores %}
-        testarConexaoReceptor('{{ receptor.ip_receptor }}', {{ receptor.id }});
+        {% if receptor.ativo %}
+            testarConexaoReceptor('{{ receptor.ip_receptor }}', {{ receptor.id }});
+        {% endif %}
     {% endfor %}
 });
 
@@ -243,7 +283,7 @@ function adicionarNovoReceptor() {
         <td><span class="badge bg-info">NOVO</span></td>
         <td>
             <input type="text" class="form-control form-control-sm" 
-                   placeholder="172.19.0.0 ou hostname.dominio"
+                   placeholder="172.19.0.0, hostname ou hostname.dominio"
                    onblur="salvarNovoReceptor(this.parentElement.parentElement)"
                    data-field="ip_receptor" 
                    required>
@@ -262,6 +302,9 @@ function adicionarNovoReceptor() {
          </td>
         <td>
             <span class="badge bg-secondary">Novo</span>
+        </td>
+        <td>
+            <span class="badge bg-secondary">-</span>
         </td>
         <td>
             <span class="badge bg-secondary">-</span>
@@ -311,11 +354,10 @@ function validarIPouHostname(valor) {
         });
     }
     
-    // Validar se é um hostname (formato hostname.dominio)
+    // Validar hostname simples ou FQDN
     const regexHostname = /^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$/;
     if (regexHostname.test(valor)) {
-        // Verificar se tem pelo menos um ponto (hostname.dominio)
-        return valor.includes('.');
+        return true;
     }
     
     return false;
@@ -453,6 +495,13 @@ function salvarReceptor(id, linha) {
 async function testarConexaoReceptor(ip, id) {
     const pingStatusElement = document.getElementById(`ping-status-${id}`);
     if (!pingStatusElement) return;
+
+    const linha = document.querySelector(`tr[data-id="${id}"]`);
+    if (linha && linha.getAttribute('data-ativo') !== '1') {
+        pingStatusElement.innerHTML = '<i class="bi bi-pause-circle"></i> Ignorado';
+        pingStatusElement.className = 'badge bg-secondary';
+        return;
+    }
     
     pingStatusElement.innerHTML = '<i class="bi bi-clock"></i> Testando...';
     pingStatusElement.className = 'badge bg-warning';
@@ -491,6 +540,33 @@ async function testarConexaoReceptor(ip, id) {
         pingStatusElement.className = 'badge bg-danger';
         console.error('Erro ao testar conectividade:', error);
     }
+}
+
+function alternarReceptorAtivo(id, ativo) {
+    const acao = ativo ? 'ativar' : 'desativar';
+    if (!confirm(`Deseja ${acao} este receptor?`)) {
+        return;
+    }
+
+    fetch(`/api/receptores/${id}/ativo`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ativo })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            mostrarSucesso(`Receptor ${acao}do com sucesso!`);
+            setTimeout(() => location.reload(), 800);
+        } else {
+            mostrarErro(result.error || `Erro ao ${acao} receptor`);
+        }
+    })
+    .catch(error => {
+        mostrarErro('Erro de conexão: ' + error.message);
+    });
 }
 
 function excluirReceptor(id, ip) {

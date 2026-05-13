@@ -1,0 +1,43 @@
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: botao-panico-linux:latest
+    container_name: botao_dashboard
+    restart: unless-stopped
+    working_dir: /app/dashboard
+    command: python -u app.py
+    env_file:
+      - ./dashboard/.env
+    environment:
+      ORACLE_CLIENT_LIB_DIR: /opt/oracle/instantclient
+      PATH_EXE_BOTAO: /app/dist/botao_de_enviar.exe
+      PATH_RECEPTOR: /app/dist/BotaoPanico_Receptor.exe
+      DASHBOARD_PORT: 3303
+      SERVER_PORT: 9600
+    ports:
+      - "3303:3303"
+    volumes:
+      - ./dist:/app/dist:ro
+      - ./docker/oracle/instantclient:/opt/oracle/instantclient:ro
+      - ./dashboard/hostnames.json:/app/dashboard/hostnames.json
+
+  alert_server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: botao-panico-linux:latest
+    container_name: botao_alert_server
+    restart: unless-stopped
+    working_dir: /app/src
+    command: python -u server.py
+    env_file:
+      - ./src/.env
+    environment:
+      ORACLE_CLIENT_LIB_DIR: /opt/oracle/instantclient
+      SERVER_PORT: 9600
+    ports:
+      - "9600:9600"
+    volumes:
+      - ./docker/oracle/instantclient:/opt/oracle/instantclient:ro

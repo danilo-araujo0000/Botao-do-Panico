@@ -1,0 +1,11 @@
+.git
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+build/
+Logs/
+dashboard/.env
+src/.env
+dashboard/modules/instantclient_23_7/
+docker/oracle/instantclient/
