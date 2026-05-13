@@ -9,7 +9,8 @@ import socket
 
 
 
-server = "172.19.200.1"
+server = os.getenv("SERVER_IP", "172.19.1.1")
+server_port = os.getenv("SERVER_PORT", "9600")
 chave = "alerta5656"
 
 
@@ -29,7 +30,7 @@ def enviar_mensagem():
     print(f"Enviando mensagem: {mensagem}")
 
   
-    requests.post(f"http://{server}:9600/{chave}/enviar", json=mensagem)
+    requests.post(f"http://{server}:{server_port}/{chave}/enviar", json=mensagem)
       
 
 

@@ -23,9 +23,15 @@ wheels/
 *.env
 .env
 src/.env
+dashboard/.env
 venv/
 .env/
 ENV/
 env.bak/
 venv.bak/
 dashboard/modules/instantclient_23_7/
+dashboard/data/CACHE/
+data/CACHE/
+dashboard/hostnames.json
+nssm.exe
+*.log
