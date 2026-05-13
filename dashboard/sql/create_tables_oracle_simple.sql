@@ -45,7 +45,7 @@ CREATE SEQUENCE dbasistemas.seq_botao_usuario
 -- Tabela de Receptores
 CREATE TABLE dbasistemas.da_tbl_botao_receptor (
     id NUMBER(10) NOT NULL,
-    ip_receptor VARCHAR2(15) NOT NULL,
+    ip_receptor VARCHAR2(255) NOT NULL,
     nome_receptor VARCHAR2(100),
     ativo NUMBER(1) DEFAULT 1 NOT NULL,
     status_receptor VARCHAR2(100) DEFAULT 'Não Instalado',
@@ -53,6 +53,7 @@ CREATE TABLE dbasistemas.da_tbl_botao_receptor (
     data_criacao DATE DEFAULT SYSDATE,
     data_atualizacao DATE DEFAULT SYSDATE,
     CONSTRAINT pk_botao_receptor PRIMARY KEY (id),
+    CONSTRAINT ck_botao_receptor_ativo CHECK (ativo IN (0, 1)),
     CONSTRAINT uk_botao_receptor_ip UNIQUE (ip_receptor)
 );
 
@@ -68,7 +69,7 @@ CREATE SEQUENCE dbasistemas.seq_botao_receptor
 -- Tabela de Logs de Alertas
 CREATE TABLE dbasistemas.da_tbl_botao_log_alerta (
     id NUMBER(10) NOT NULL,
-    ip_receptor VARCHAR2(15) NOT NULL,
+    ip_receptor VARCHAR2(255) NOT NULL,
     hostname_chamador VARCHAR2(100),
     nome_usuario VARCHAR2(100),
     nome_sala VARCHAR2(100),
@@ -114,7 +115,7 @@ CREATE TABLE dbasistemas.da_tbl_botao_usuario_login (
     senha VARCHAR2(255) NOT NULL,
     data_criacao DATE DEFAULT SYSDATE,
     CONSTRAINT pk_botao_usuario_login PRIMARY KEY (id),
-    CONSTRAINT uk_botao_usuario_login_usuario UNIQUE (usuario),
+    CONSTRAINT uk_botao_usuario_login_usuario UNIQUE (usuario)
 );
 
 CREATE SEQUENCE dbasistemas.seq_botao_usuario_login
@@ -137,7 +138,7 @@ CREATE SEQUENCE dbasistemas.seq_botao_config_ad
 START WITH 1
 INCREMENT BY 1
 NOCACHE
-NOCYCLE
+NOCYCLE;
 
 -- Tabela para configuração de sincronização automática 
 CREATE TABLE dbasistemas.da_tbl_botao_sinc_user (
@@ -153,6 +154,12 @@ CREATE TABLE dbasistemas.da_tbl_botao_sinc_user (
     data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
+CREATE SEQUENCE dbasistemas.seq_botao_sinc_user
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
+
 
 -- Comentários
 COMMENT ON TABLE dbasistemas.da_tbl_botao_sala IS 'Tabela de mapeamento de salas do sistema "botão do pânico"';
@@ -162,32 +169,4 @@ COMMENT ON TABLE dbasistemas.da_tbl_botao_log_alerta IS 'Tabela de logs de alert
 COMMENT ON TABLE dbasistemas.da_tbl_botao_log_sistema IS 'Tabela de logs de sistema "botão do pânico"';
 COMMENT ON TABLE dbasistemas.da_tbl_botao_usuario_login IS 'Tabela de usuários para autenticação do sistema "botão do pânico"';
 COMMENT ON TABLE dbasistemas.da_tbl_botao_config_ad IS 'Tabela de configurações do AD SERVER para o sistema "botão do pânico"';
-
-
--- Criar Usuario de Acesso as tabelas
-CREATE USER bpuser IDENTIFIED BY bpuser;
-GRANT CONNECT TO bpuser;
-
-GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_sala TO bpuser;
-GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_usuario TO bpuser;
-GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_receptor TO bpuser;
-GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_log_alerta TO bpuser;
-GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_log_sistema TO bpuser;
-GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_usuario_login TO bpuser;
-GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_config_ad TO bpuser;
-GRANT ALTER, INSERT, UPDATE, DELETE ON dbasistemas.da_tbl_botao_sinc_user TO bpuser;
-GRANT SELECT, ALTER ON dbasistemas.seq_botao_config_ad TO bpuser;
-GRANT SELECT, ALTER ON dbasistemas.seq_botao_sala TO bpuser;
-GRANT SELECT, ALTER ON dbasistemas.seq_botao_usuario TO bpuser;
-GRANT SELECT, ALTER ON dbasistemas.seq_botao_receptor TO bpuser;
-GRANT SELECT, ALTER ON dbasistemas.seq_botao_log_alerta TO bpuser;
-GRANT SELECT, ALTER ON dbasistemas.seq_botao_log_sistema TO bpuser;
-GRANT SELECT, ALTER ON dbasistemas.seq_botao_usuario_login TO bpuser;
-GRANT SELECT, ALTER ON dbasistemas.seq_botao_config_ad TO bpuser;
-
-
-
-
-
-
-
+COMMENT ON TABLE dbasistemas.da_tbl_botao_sinc_user IS 'Tabela de configuração de sincronização automática de usuários do sistema "botão do pânico"';
