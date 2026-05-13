@@ -199,6 +199,75 @@ download_oracle_zip() {
     ORACLE_ZIP_PATH="$target_zip"
 }
 
+repair_oracle_symlinks() {
+    local base_dir="$1"
+
+    local clntsh_target
+    clntsh_target="$(find "$base_dir" -maxdepth 1 -type f -name 'libclntsh.so.*' | sort -V | tail -n 1 | xargs -r basename)"
+    if [[ -n "$clntsh_target" ]]; then
+        rm -f "$base_dir/libclntsh.so" \
+              "$base_dir/libclntsh.so.10.1" \
+              "$base_dir/libclntsh.so.11.1" \
+              "$base_dir/libclntsh.so.12.1" \
+              "$base_dir/libclntsh.so.18.1" \
+              "$base_dir/libclntsh.so.19.1" \
+              "$base_dir/libclntsh.so.20.1" \
+              "$base_dir/libclntsh.so.21.1" \
+              "$base_dir/libclntsh.so.22.1"
+        ln -sf "$clntsh_target" "$base_dir/libclntsh.so"
+        ln -sf "$clntsh_target" "$base_dir/libclntsh.so.10.1"
+        ln -sf "$clntsh_target" "$base_dir/libclntsh.so.11.1"
+        ln -sf "$clntsh_target" "$base_dir/libclntsh.so.12.1"
+        ln -sf "$clntsh_target" "$base_dir/libclntsh.so.18.1"
+        ln -sf "$clntsh_target" "$base_dir/libclntsh.so.19.1"
+        ln -sf "$clntsh_target" "$base_dir/libclntsh.so.20.1"
+        ln -sf "$clntsh_target" "$base_dir/libclntsh.so.21.1"
+        ln -sf "$clntsh_target" "$base_dir/libclntsh.so.22.1"
+    fi
+
+    local clntshcore_target
+    clntshcore_target="$(find "$base_dir" -maxdepth 1 -type f -name 'libclntshcore.so.*' | sort -V | tail -n 1 | xargs -r basename)"
+    if [[ -n "$clntshcore_target" ]]; then
+        rm -f "$base_dir/libclntshcore.so" \
+              "$base_dir/libclntshcore.so.12.1" \
+              "$base_dir/libclntshcore.so.18.1" \
+              "$base_dir/libclntshcore.so.19.1" \
+              "$base_dir/libclntshcore.so.20.1" \
+              "$base_dir/libclntshcore.so.21.1" \
+              "$base_dir/libclntshcore.so.22.1"
+        ln -sf "$clntshcore_target" "$base_dir/libclntshcore.so"
+        ln -sf "$clntshcore_target" "$base_dir/libclntshcore.so.12.1"
+        ln -sf "$clntshcore_target" "$base_dir/libclntshcore.so.18.1"
+        ln -sf "$clntshcore_target" "$base_dir/libclntshcore.so.19.1"
+        ln -sf "$clntshcore_target" "$base_dir/libclntshcore.so.20.1"
+        ln -sf "$clntshcore_target" "$base_dir/libclntshcore.so.21.1"
+        ln -sf "$clntshcore_target" "$base_dir/libclntshcore.so.22.1"
+    fi
+
+    local occi_target
+    occi_target="$(find "$base_dir" -maxdepth 1 -type f -name 'libocci.so.*' | sort -V | tail -n 1 | xargs -r basename)"
+    if [[ -n "$occi_target" ]]; then
+        rm -f "$base_dir/libocci.so" \
+              "$base_dir/libocci.so.10.1" \
+              "$base_dir/libocci.so.11.1" \
+              "$base_dir/libocci.so.12.1" \
+              "$base_dir/libocci.so.18.1" \
+              "$base_dir/libocci.so.19.1" \
+              "$base_dir/libocci.so.20.1" \
+              "$base_dir/libocci.so.21.1" \
+              "$base_dir/libocci.so.22.1"
+        ln -sf "$occi_target" "$base_dir/libocci.so"
+        ln -sf "$occi_target" "$base_dir/libocci.so.10.1"
+        ln -sf "$occi_target" "$base_dir/libocci.so.11.1"
+        ln -sf "$occi_target" "$base_dir/libocci.so.12.1"
+        ln -sf "$occi_target" "$base_dir/libocci.so.18.1"
+        ln -sf "$occi_target" "$base_dir/libocci.so.19.1"
+        ln -sf "$occi_target" "$base_dir/libocci.so.20.1"
+        ln -sf "$occi_target" "$base_dir/libocci.so.21.1"
+        ln -sf "$occi_target" "$base_dir/libocci.so.22.1"
+    fi
+}
+
 resolve_oracle_zip() {
     mkdir -p "$ORACLE_PACKAGES_DIR"
 
@@ -278,6 +347,7 @@ PY
     rm -rf "$ORACLE_DIR"/*
     cp -a "$extracted_dir"/. "$ORACLE_DIR"/
     rm -rf "$temp_dir"
+    repair_oracle_symlinks "$ORACLE_DIR"
 
     [[ -f "$ORACLE_DIR/libclntsh.so" || -f "$ORACLE_DIR/libclntsh.so.23.1" ]] || fail "Instant Client extraido, mas bibliotecas principais nao foram encontradas"
 }
